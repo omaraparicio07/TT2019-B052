@@ -1,13 +1,16 @@
 from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
+from flask_pymongo import PyMongo
 from functools import wraps
+from werkzeug.security import generate_password_hash
 import jwt
 import os
-import base64
 import datetime
 
 app = Flask(__name__)
 app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
+
+mongo = PyMongo(app)
 CORS(app)
 
 #Funcion para validad el token en cada peticion que sea anotada
@@ -71,6 +74,37 @@ def lastDiagram():
     'message':'ruta que requiere token'
   }
   return jsonify(response)
+
+# Metodos del CRUD
+@app.route("/create", methods=['POST'])
+def create_user():
+  body = request.get_json()
+  email = body['email']
+  name = body['name']
+  username = body['username']
+  password = body['password']
+
+  users = mongo.db.users
+  existing_user = users.find_one({'email' : email})
+
+  if existing_user:
+    response = {
+      'message':'El usuario ya se encuentra registrado'
+    }
+    return make_response(response,409)
+
+  if username and email and name and password:
+    password_hashed = generate_password_hash(password)
+    idUser = mongo.db.users.insert({
+        'name':name,
+        'username': username,
+        'email': email,
+        'password': password_hashed
+        })
+    return make_response({'message':'Usuario creado con éxito'}, 201)
+  else:
+    return make_response({'message':'Ocurrio algo en el proceso'}, 409)
+
 
 if __name__=='__main__':
   app.run(debug=True)
