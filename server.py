@@ -115,7 +115,6 @@ def getUser():
 @app.route("/user", methods=['GET'])
 def getUserByEmail():
   email = request.json['email']
-  print(email)
   if not email:
     return make_response({ 'message': 'Ingresar un email' }, 400)
 
@@ -123,7 +122,24 @@ def getUserByEmail():
   if user :
     response = json_util.dumps(user)
     return make_response(response, 200)
-  return make_response({ 'message', 'Usuario no encontrado' },404) 
+  return make_response({ 'message', 'Usuario no encontrado' },404)
+
+@app.route("/user", methods=['DELETE'])
+def deleteUser():
+  email = request.json['email']
+  if not email:
+    return make_response({ 'message': 'Ingresar un email' }, 400)
+  
+  user = mongo.db.users.find_one( { 'email': email } )
+  
+  if user:
+    id = mongo.db.users.delete_one( { 'email': email } )
+    response = {
+      "message":"Usuarios borrado exitosamente"
+    }
+    return make_response(response, 200)
+  else :
+    return make_response({ 'message': 'Usuario no encontrado' }, 404)
 
 if __name__=='__main__':
   app.run(debug=True)
