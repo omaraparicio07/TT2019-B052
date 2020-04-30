@@ -5,7 +5,7 @@
 
 ### Prerequires
 
-- [phython 3.7](https://www.python.org/downloads/release/python-370/)
+- [python 3.7](https://www.python.org/downloads/release/python-370/)
 - [pipenv](https://pipenv-es.readthedocs.io/es/latest/install.html)
 
 ### Run project
