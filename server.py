@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from flask_pymongo import PyMongo
+from bson import json_util, objectid
 from functools import wraps
 from werkzeug.security import generate_password_hash
 import jwt
@@ -105,6 +106,24 @@ def create_user():
   else:
     return make_response({'message':'Ocurrio algo en el proceso'}, 409)
 
+@app.route("/users", methods=['GET'])
+def getUser():
+  users = mongo.db.users.find()
+  response = json_util.dumps(users)
+  return make_response(response, 200)
+
+@app.route("/user", methods=['GET'])
+def getUserByEmail():
+  email = request.json['email']
+  print(email)
+  if not email:
+    return make_response({ 'message': 'Ingresar un email' }, 400)
+
+  user = mongo.db.users.find_one( { 'email': email } )
+  if user :
+    response = json_util.dumps(user)
+    return make_response(response, 200)
+  return make_response({ 'message', 'Usuario no encontrado' },404) 
 
 if __name__=='__main__':
   app.run(debug=True)
