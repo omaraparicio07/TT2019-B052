@@ -11,6 +11,7 @@ pyjwt = "*"
 flask-cors = "*"
 flask-pymongo = "*"
 dnspython = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.7"
