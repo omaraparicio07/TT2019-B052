@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, Response
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 from bson import json_util, objectid
@@ -10,6 +10,7 @@ import datetime
 
 app = Flask(__name__)
 app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
+app.response_class.default_mimetype="application/json"
 
 mongo = PyMongo(app)
 CORS(app)
@@ -109,9 +110,9 @@ def create_user():
 def getUser():
   users = mongo.db.users.find()
   response = json_util.dumps(users)
-  return make_response(response, 200)
+  return Response(response)
 
-@app.route("/users", methods=['GET'])
+@app.route("/user", methods=['GET'])
 def getUserByEmail():
   email = request.json['email']
   if not email:
@@ -120,17 +121,17 @@ def getUserByEmail():
   user = mongo.db.users.find_one( { 'email': email } )
   if user :
     response = json_util.dumps(user)
-    return make_response(response, 200)
-  return make_response({ 'message', 'Usuario no encontrado' },404)
+    return Response(response)
+  return Response({ 'message':'Usuario no encontrado' },404)
 
 @app.route("/users", methods=['DELETE'])
 def deleteUser():
   email = request.json['email']
   if not email:
     return make_response({ 'message': 'Ingresar un email' }, 400)
-  
+
   user = mongo.db.users.find_one( { 'email': email } )
-  
+
   if user:
     id = mongo.db.users.delete_one( { 'email': email } )
     response = {
@@ -155,7 +156,7 @@ def updateUser(id):
       'message':'El usuario no se encuentra registrado'
     }
     return make_response(response,404)
-  
+
   if username and email and password and name:
       password_hashed = generate_password_hash(password)
       db_result = mongo.db.users.update_one({'_id': objectid.ObjectId(id)},
