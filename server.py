@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_pymongo import PyMongo
 from bson import json_util, objectid
 from functools import wraps
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import os
 import datetime
@@ -47,25 +47,28 @@ def greet():
 
 @app.route("/login", methods=['POST'])
 def login():
-  auth = request.get_json()
-  if app.config.get('LOGIN_EMAIL') == auth['email']and app.config.get('LOGIN_PASSWORD') == auth['password']:
+  emailUser = request.json['email']
+  passwordUser = request.json['password']
+  password_hashed = generate_password_hash(passwordUser)
+
+  existing_user = mongo.db.users.find_one({'email' : emailUser})
+  if existing_user and check_password_hash(existing_user['password'], passwordUser):
     # Tiempo de expiracion del token de 30 minutos
-    expirationToken = datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+    expirationToken = datetime.datetime.utcnow() + datetime.timedelta(days=1)
 
     payloadToken  = {
-      'user' : auth['email'],
+      'user' : emailUser,
       'exp' : expirationToken
     }
     token = jwt.encode(payloadToken, app.config['SECRET_KEY'])
 
     response = {
-      "email":auth['email'],
-      "username":auth['email'] + ' ' + auth['password'],
+      "email":emailUser,
       "token":token.decode('UTF-8')
     }
     return jsonify(response)
 
-  return make_response({'response':'Usuario no encontrado'}, 401)
+  return make_response({'response':'email o contraseña incorrectos'}, 401)
 
 @app.route("/last-diagram", methods=['GET'])
 @token_required
