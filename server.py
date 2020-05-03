@@ -85,7 +85,6 @@ def create_user():
   body = request.get_json()
   email = body['email']
   name = body['name']
-  username = body['username']
   password = body['password']
 
   users = mongo.db.users
@@ -97,13 +96,13 @@ def create_user():
     }
     return make_response(response,409)
 
-  if username and email and name and password:
+  if  email and name and password:
     password_hashed = generate_password_hash(password)
     idUser = mongo.db.users.insert_one({
         'name':name,
-        'username': username,
         'email': email,
-        'password': password_hashed
+        'password': password_hashed,
+        'diagram':{}
         })
     return make_response({'message':'Usuario creado con éxito'}, 201)
   else:
