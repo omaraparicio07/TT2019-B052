@@ -19,6 +19,9 @@ CORS(app)
 def token_required(f):
   @wraps(f)
   def decorated(*args, **kwargs):
+    # print(*args)
+    # print("*"*10)
+    # print(**kwargs)
     token = request.headers['Authorization']
     if not token:
       response = {
@@ -73,14 +76,32 @@ def login():
 @app.route("/last-diagram", methods=['GET'])
 @token_required
 def lastDiagram():
-  # print(request.headers['Authorization'])
-  response = {
-    'message':'ruta que requiere token'
-  }
-  return jsonify(response)
+  token_decode = jwt.decode(request.headers['Authorization'], app.config['SECRET_KEY'])
+  email = token_decode['user']
+  try:
+    existing_user = mongo.db.users.find_one( { 'email': email }, {'_id':0,'email':1,'diagram':1} )
+    # print(existing_user)
+    return Response(json_util.dumps(existing_user),200)
+  except:
+    return Response({'error':'Usuario no encontrado'}, 404)
+
+@app.route("/diagram", methods=['POST'])
+@token_required
+def saveDiagram():
+  token_decode = jwt.decode(request.headers['Authorization'], app.config['SECRET_KEY'])
+  email = token_decode['user']
+  diagram = request.json['diagram']
+  try:
+    existing_user = mongo.db.users.update_one( { 'email': email },
+                    {
+                      '$set': { 'diagram': diagram }
+                    })
+    return make_response({'response':'Diagrama guardado'}, 201)
+  except:
+    return make_response({'error':'Ocurrio algo en el proceso'}, 500)
 
 # Metodos del CRUD
-@app.route("/create", methods=['POST'])
+@app.route("/user", methods=['POST'])
 def create_user():
   body = request.get_json()
   email = body['email']
@@ -173,7 +194,7 @@ def updateUser(id):
         response = { 'message': 'Usuario actualizado correctamente'}
         return make_response(response,  201)
       else :
-        return make_response({'message':'Ocurrio algo en el proceso'}, 409)
+        return make_response({'message':'Ocurrio algo en el proceso'}, 500)
   else:
     return make_response({'message':'Asegurese de enviar todos los campos'}, 400)
 
