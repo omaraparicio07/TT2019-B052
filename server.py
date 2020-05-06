@@ -67,11 +67,12 @@ def login():
 
     response = {
       "email":emailUser,
+      "name": existing_user['name'],
       "token":token.decode('UTF-8')
     }
     return jsonify(response)
 
-  return make_response({'response':'email o contraseña incorrectos'}, 401)
+  return make_response({'error':'email o contraseña incorrectos'}, 401)
 
 @app.route("/last-diagram", methods=['GET'])
 @token_required
@@ -101,7 +102,7 @@ def saveDiagram():
     return make_response({'error':'Ocurrio algo en el proceso'}, 500)
 
 # Metodos del CRUD
-@app.route("/user", methods=['POST'])
+@app.route("/register", methods=['POST'])
 def create_user():
   body = request.get_json()
   email = body['email']
@@ -113,7 +114,7 @@ def create_user():
 
   if existing_user:
     response = {
-      'message':'El usuario ya se encuentra registrado'
+      'error':'El email del usuario ya se encuentra registrado'
     }
     return make_response(response,409)
 
@@ -125,9 +126,27 @@ def create_user():
         'password': password_hashed,
         'diagram':{}
         })
-    return make_response({'message':'Usuario creado con éxito'}, 201)
+
+    if idUser:
+      expirationToken = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+      payloadToken  = {
+        'user' : email,
+        'exp' : expirationToken
+        }
+
+      token = jwt.encode(payloadToken, app.config['SECRET_KEY'])
+      print(token)
+      response = {
+        "email":email,
+        "name": name,
+        "token":token.decode('UTF-8')
+      }
+      return make_response(response, 201)
+    else:
+      return make_response({'error':'Ocurrio un error en el proceso'}, 500)
+
   else:
-    return make_response({'message':'Ocurrio algo en el proceso'}, 409)
+    return make_response({'error':'Asegurese de enviar todos los datos'}, 409)
 
 @app.route("/users", methods=['GET'])
 def getUser():
@@ -145,13 +164,13 @@ def getUserByEmail():
   if user :
     response = json_util.dumps(user)
     return Response(response)
-  return Response({ 'message':'Usuario no encontrado' },404)
+  return Response({ 'error':'Usuario no encontrado' },404)
 
 @app.route("/users", methods=['DELETE'])
 def deleteUser():
   email = request.json['email']
   if not email:
-    return make_response({ 'message': 'Ingresar un email' }, 400)
+    return make_response({ 'error': 'Ingresar un email' }, 400)
 
   user = mongo.db.users.find_one( { 'email': email } )
 
@@ -162,7 +181,7 @@ def deleteUser():
     }
     return make_response(response, 200)
   else :
-    return make_response({ 'message': 'Usuario no encontrado' }, 404)
+    return make_response({ 'error': 'Usuario no encontrado' }, 404)
 
 @app.route('/users/<id>', methods=['PUT'])
 def updateUser(id):
