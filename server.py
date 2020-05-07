@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import os
 import datetime
+from email_sender import send_email
 
 app = Flask(__name__)
 app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
@@ -19,9 +20,6 @@ CORS(app)
 def token_required(f):
   @wraps(f)
   def decorated(*args, **kwargs):
-    # print(*args)
-    # print("*"*10)
-    # print(**kwargs)
     token = request.headers['Authorization']
     if not token:
       response = {
@@ -56,7 +54,7 @@ def login():
 
   existing_user = mongo.db.users.find_one({'email' : emailUser})
   if existing_user and check_password_hash(existing_user['password'], passwordUser):
-    # Tiempo de expiracion del token de 30 minutos
+    # Tiempo de expiracion del token
     expirationToken = datetime.datetime.utcnow() + datetime.timedelta(days=1)
 
     payloadToken  = {
@@ -135,12 +133,12 @@ def create_user():
         }
 
       token = jwt.encode(payloadToken, app.config['SECRET_KEY'])
-      print(token)
       response = {
         "email":email,
         "name": name,
         "token":token.decode('UTF-8')
       }
+      email_result = send_email(email, password, name)
       return make_response(response, 201)
     else:
       return make_response({'error':'Ocurrio un error en el proceso'}, 500)
@@ -158,7 +156,7 @@ def getUser():
 def getUserByEmail():
   email = request.json['email']
   if not email:
-    return make_response({ 'message': 'Ingresar un email' }, 400)
+    return make_response({ 'error': 'Ingresar un email' }, 400)
 
   user = mongo.db.users.find_one( { 'email': email } )
   if user :
@@ -195,7 +193,7 @@ def updateUser(id):
 
   if not existing_user:
     response = {
-      'message':'El usuario no se encuentra registrado'
+      'error':'El usuario no se encuentra registrado'
     }
     return make_response(response,404)
 
@@ -210,6 +208,36 @@ def updateUser(id):
         }
       })
       if db_result:
+        response = { 'message': 'Usuario actualizado correctamente'}
+        return make_response(response,  201)
+      else :
+        return make_response({'error':'Ocurrio algo en el proceso'}, 500)
+  else:
+    return make_response({'error':'Asegurese de enviar todos los campos'}, 400)
+
+@app.route('/recovery-password', methods=['PUT'])
+def recovery_pass():
+  body = request.get_json()
+  email = body['email']
+  password = body['password']
+
+  existing_user = mongo.db.users.find_one( { 'email' : email })
+
+  if not existing_user:
+    response = {
+      'error':'El usuario no se encuentra registrado'
+    }
+    return make_response(response,404)
+
+  if email and password:
+      password_hashed = generate_password_hash(password)
+      db_result = mongo.db.users.update_one({'email': email},
+      {'$set':{
+        'password':password_hashed
+        }
+      })
+      if db_result:
+        email_result = send_email(email, password, existing_user['name'], True)
         response = { 'message': 'Usuario actualizado correctamente'}
         return make_response(response,  201)
       else :
