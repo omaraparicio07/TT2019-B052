@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import os
 import datetime
-from email_sender import send_email
+from util import send_email, validate_email
 
 app = Flask(__name__)
 app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
@@ -116,7 +116,7 @@ def create_user():
     }
     return make_response(response,409)
 
-  if  email and name and password:
+  if  validate_email(email) and name and password:
     password_hashed = generate_password_hash(password)
     idUser = mongo.db.users.insert_one({
         'name':name,
@@ -144,7 +144,7 @@ def create_user():
       return make_response({'error':'Ocurrio un error en el proceso'}, 500)
 
   else:
-    return make_response({'error':'Asegurese de enviar todos los datos'}, 409)
+    return make_response({'error':'Asegurese de enviar todos los datos y que sean correctos'}, 409)
 
 @app.route("/users", methods=['GET'])
 def getUser():
@@ -237,7 +237,7 @@ def recovery_pass():
         }
       })
       if db_result:
-        email_result = send_email(email, password, existing_user['name'], True)
+        email_result = send_email(email, password, existing_user['name'], True, True)
         response = { 'message': 'Usuario actualizado correctamente'}
         return make_response(response,  201)
       else :
