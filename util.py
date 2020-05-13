@@ -4,7 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-logging.basicConfig(level=logging.INFO, filename='server.log')
+logging.basicConfig(level=logging.DEBUG)
 
 def send_email(email_user,password_user, name_user,subject=False ,forget_pass=False):
 
@@ -17,10 +17,10 @@ def send_email(email_user,password_user, name_user,subject=False ,forget_pass=Fa
   <html>
   <head></head>
   <body>
-    <p>Hi! <b>How are you?</b><br>
-       Welcome to the project TT-2019-B052<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;name:%s<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;password:%s
+    <p>Hi! <b>How are you?</b><br><br>
+       Welcome to the project TT-2019-B052<br><br>
+       &nbsp;&nbsp;&nbsp;&nbsp;name : %s<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;password : %s
     </p>
   </body>
   </html>
@@ -30,10 +30,10 @@ def send_email(email_user,password_user, name_user,subject=False ,forget_pass=Fa
   <html>
   <head></head>
   <body>
-    <p>Hi! <b>Welcome back </b><br>
-       Have you changed your password?<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;name:%s<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;password:%s
+    <p>Hi! <b>Welcome back </b><br><br>
+       Have you changed your password?<br><br>
+       &nbsp;&nbsp;&nbsp;&nbsp;name : %s<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;password : %s
     </p>
   </body>
   </html>
