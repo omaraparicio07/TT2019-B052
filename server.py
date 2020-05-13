@@ -21,11 +21,15 @@ def token_required(f):
   @wraps(f)
   def decorated(*args, **kwargs):
     token = request.headers['Authorization']
+
     if not token:
       response = {
         'message': 'Token no encontrado en la petición'
       }
       return jsonify(response),403
+
+    if "Bearer " in token:
+      token = token[token.index(' ')+1:]
 
     try:
       data = jwt.decode(token, app.config['SECRET_KEY'])
@@ -55,11 +59,11 @@ def login():
   existing_user = mongo.db.users.find_one({'email' : emailUser})
   if existing_user and check_password_hash(existing_user['password'], passwordUser):
     # Tiempo de expiracion del token
-    expirationToken = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    # expirationToken = datetime.datetime.utcnow() + datetime.timedelta(days=1)
 
     payloadToken  = {
-      'user' : emailUser,
-      'exp' : expirationToken
+      'user' : emailUser
+      # 'exp' : expirationToken
     }
     token = jwt.encode(payloadToken, app.config['SECRET_KEY'])
 
@@ -75,7 +79,12 @@ def login():
 @app.route("/last-diagram", methods=['GET'])
 @token_required
 def lastDiagram():
-  token_decode = jwt.decode(request.headers['Authorization'], app.config['SECRET_KEY'])
+  token = request.headers['Authorization']
+
+  if "Bearer " in token:
+      token = token[token.index(' ')+1:]
+
+  token_decode = jwt.decode(token, app.config['SECRET_KEY'])
   email = token_decode['user']
   try:
     existing_user = mongo.db.users.find_one( { 'email': email }, {'_id':0,'email':1,'diagram':1} )
@@ -87,7 +96,12 @@ def lastDiagram():
 @app.route("/diagram", methods=['POST'])
 @token_required
 def saveDiagram():
-  token_decode = jwt.decode(request.headers['Authorization'], app.config['SECRET_KEY'])
+  token = request.headers['Authorization']
+
+  if "Bearer " in token:
+      token = token[token.index(' ')+1:]
+
+  token_decode = jwt.decode(token, app.config['SECRET_KEY'])
   email = token_decode['user']
   diagram = request.json['diagram']
   try:
