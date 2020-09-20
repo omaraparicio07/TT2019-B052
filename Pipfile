@@ -12,6 +12,8 @@ flask-cors = "*"
 flask-pymongo = "*"
 dnspython = "*"
 gunicorn = "*"
+flask-restplus = "*"
+werkzeug = "==0.16.1"
 
 [requires]
 python_version = "3.7"
