@@ -8,15 +8,19 @@ import jwt
 import os
 import datetime
 from util import send_email, validate_email
+from apis import api
+from config.database import initialize_db
 
 app = Flask(__name__)
 app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
-app.response_class.default_mimetype="application/json"
+# app.response_class.default_mimetype="application/json"
 
 mongo = PyMongo(app)
 CORS(app)
+initialize_db(app)
+api.init_app(app)
 
-#Funcion para validad el token en cada peticion que sea anotada
+# Funcion para validad el token en cada peticion que sea anotada
 def token_required(f):
   @wraps(f)
   def decorated(*args, **kwargs):
