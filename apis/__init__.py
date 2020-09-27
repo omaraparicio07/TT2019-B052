@@ -1,6 +1,7 @@
 from flask_restplus import Api
 
 from .user import api as ns_user
+from .login import api as ns_login
 
 
 api = Api(
@@ -11,3 +12,4 @@ api = Api(
 )
 
 api.add_namespace(ns_user)
+api.add_namespace(ns_login)
