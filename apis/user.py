@@ -7,7 +7,7 @@ from util import send_email, validate_email
 import datetime
 import jwt
 
-api = Namespace('user', description='Cats related operations')
+api = Namespace('user', description='Operaciones sobre un usuario')
 
 user = api.model('User', {
   '_id': fields.String(required=False, readonly=True),
@@ -23,7 +23,7 @@ user = api.model('User', {
 class User(Resource):
   @api.marshal_list_with(user)
   def get(self):
-    '''List all users'''
+    '''Listar todos los usuarios'''
     users = db.db.users.find()
     response = list(users)
     return response
@@ -32,15 +32,9 @@ class User(Resource):
   @api.expect( user )
   def post(self):
     '''Crear un nuevo usuario'''
-    print(api.payload)
-    # data = api.payload
-    # email = data['email']
-    # name = data['name']
-    # password = data['password']
     users = db.db.users
     existing_user = users.find_one({'email' : email})
 
-    print("---------"*10)
     if existing_user:
       api.abort(500, status = "El email del usuario ya se encuentra registrado", statusCode = "409")
     
