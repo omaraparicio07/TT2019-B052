@@ -11,16 +11,16 @@ api = Namespace('user', description='Operaciones sobre un usuario')
 
 user = api.model('User', {
   '_id': fields.String(required=False, readonly=True),
-  'name': fields.String(required=True, readonly=True),
-  'username': fields.String,
-  'email': fields.String(required=True),
-  'password': fields.String(required=True),
-  'diagram': fields.String,
+  'username': fields.String(required=False, readonly=True, description="a username", example="username"),
+  'name': fields.String(required=True ),
+  'email': fields.String(required=True, example="email@domain.com"),
+  'password': fields.String(required=True, example="P4ssw0rd*"),
+  'diagram': fields.String(example="{}", readonly=True),
 })
 
 
 @api.route('/')
-class User(Resource):
+class Users(Resource):
   @api.marshal_list_with(user)
   def get(self):
     '''Listar todos los usuarios'''
@@ -28,15 +28,20 @@ class User(Resource):
     response = list(users)
     return response
   
-  @api.doc(responses={ 200: 'OK', 400: 'Faltan algunos argumentos', 500: 'Error en el servidor' } )
+  @api.response(200, 'Usuario creado correctamente')
+  @api.response(400, 'Faltan algunos argumentos')
+  @api.response(409, 'El email ya se encuentra registrado')
+  @api.response(500, 'Error en el servidor')
   @api.expect( user )
   def post(self):
     '''Crear un nuevo usuario'''
-    users = db.db.users
-    existing_user = users.find_one({'email' : email})
+    email = api.payload['email']
+    password = api.payload['password']
+    name = api.payload['name']
+    existing_user = db.db.users.find_one({'email' : email})
 
     if existing_user:
-      api.abort(500, status = "El email del usuario ya se encuentra registrado", statusCode = "409")
+      api.abort(409, status = "El email del usuario ya se encuentra registrado")
     
     if validate_email(email) and name and password:
       password_hashed = generate_password_hash(password)
@@ -62,4 +67,19 @@ class User(Resource):
       email_result = send_email(email, password, name)
       return response
     else:
-      api.abort(500, status = "Ocurrio un error en el proceso", statusCode = "500")
+      api.abort(500, status = "Ocurrio un error en el proceso")
+
+@api.route('/<email>')
+class user(Resource):
+  @api.doc(params={'email':'user email'})
+  @api.response(200, "Usuario encontrado")
+  @api.response(404, "Usuario no encontrado")
+  @api.response(500, "Error en el servidor")
+  @api.marshal_with(user)
+  def get(self, email):
+    '''Obtener infomación de un usuario a través de su email'''
+    user = db.db.users.find_one({'email': email})
+    if user:
+      return user
+    else:
+      api.abort(404, "No se encontro información asociada a esta cuenta de email")
