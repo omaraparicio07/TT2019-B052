@@ -5,6 +5,7 @@ from functools import wraps
 from config.database import db
 from util import send_email
 import jwt
+import json
 
 api = Namespace('diagram', description='Operaciones sobre un diagrama')
 
@@ -40,8 +41,8 @@ def token_required(f):
   return decorated
 
 
-@api.route('/')
-class User(Resource):
+@api.route('')
+class Diagram(Resource):
   @api.doc(security='Bearer Auth')
   @api.response(201, 'Guardado éxitoso')
   @api.response(401, 'No autorizado')
@@ -58,7 +59,7 @@ class User(Resource):
 
     token_decode = jwt.decode(token, current_app.config['SECRET_KEY'])
     email = token_decode['user']
-    diagram = api.payload['diagram']
+    diagram = json.loads(api.payload['diagram'])
     try:
       existing_user = db.db.users.update_one( { 'email': email },
                       {

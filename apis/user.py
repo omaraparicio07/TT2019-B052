@@ -19,7 +19,7 @@ user = api.model('User', {
 })
 
 
-@api.route('/')
+@api.route('')
 class Users(Resource):
   @api.marshal_list_with(user)
   def get(self):

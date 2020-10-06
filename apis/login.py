@@ -13,7 +13,7 @@ login = api.model('Login', {
 })
 
 
-@api.route('/')
+@api.route('')
 class User(Resource):    
   @api.expect(login, validate=True)
   @api.response(200, 'Autenticación correcta')
