@@ -132,10 +132,29 @@ def getRelationships(diagram):
         )
   return relationships
 
+def getEntityWithAtributes(diagram, entity, attrs):
+  print(f"{bcolors.OKCYAN} {entity} {bcolors.ENDC}")
+  diagramDict = diagram['diagram']
+  entityWithAttr = []
+  for node in diagramDict['linkDataArray']:  #pattern matching from & to 
+    origin, destiny = node.items()
+    if origin[1] == entity[1]:
+      print("match %s entity with attr %s - %s"% (entity[0], origin[1], destiny[1]) )
+      for attr in attrs:
+        if attr[1] == destiny[1]:
+          entityWithAttr.append(attr)
+    if destiny[1] == entity[1]:
+      print("match %s entity with attr %s - %s"% (entity[0], destiny[1], origin[1]) )
+      for attr in attrs:
+        if attr[1] == origin[1]:
+          entityWithAttr.append(attr)
+
+  return entityWithAttr
+
 entities = getEntities(diagram)
 attrs = getAttrs(diagram)
 relations = getRelationships(diagram)
-# entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
 
 print("*"*20)
 print(entities)
