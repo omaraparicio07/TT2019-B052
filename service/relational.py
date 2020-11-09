@@ -106,16 +106,14 @@ class bcolors:
 
 def getSentencesSQL(project_name, entitiesWithAttrs):
   database_template = """
-  CREATE DATABASE {db_name};
-  USE {db_name};
-  """
+CREATE DATABASE {db_name};
+USE {db_name};
+"""
 
   script_sentences = database_template.format(db_name=project_name)
 
   for table in entitiesWithAttrs:
-    print(table)
     # get name table in dict with next(iter(table))
-    # table_script = table_template.format(next(iter(table)), getColumns(list(table.values())) )
     script_sentences += build_table_sentence(table)
 
   return script_sentences
@@ -123,20 +121,40 @@ def getSentencesSQL(project_name, entitiesWithAttrs):
 def build_table_sentence(table_dict):
 
   table_template = """
-  -- step 1. drop table if exists
-  DROP TABLE IF EXISTS {table_name} CASCADE;
-  --step 2. create table 
-  CREATE TABLE [IF NOT EXISTS] {table_name} (
-  --step 3. create columns dinamically with next nomenclature
-  -- column_name data_type(length) [NOT NULL] [DEFAULT value] [AUTO_INCREMENT] column_constraint;
-  {attrs_sentences}
-  ) ENGINE=InnoDB;
-  """
+---------------- CREATE TABLE ----------------
+-- step 1. drop table if exists
+DROP TABLE IF EXISTS {table_name} CASCADE;
+-- step 2. create table 
+CREATE TABLE IF NOT EXISTS {table_name} (
+-- step 3. create columns dinamically with next nomenclature
+-- column_name data_type(length) [NOT NULL] [DEFAULT value] [AUTO_INCREMENT] column_constraint;
+  ----- ****** Attributes table ****** ------
+{attrs_sentences}
+  ----- ****** Constraints table ****** ------
+) ENGINE=InnoDB;
+"""
   attr_by_table = ""
-  # for table in table_dict:
-  #   attr_by_table = getColumns()
+  attr_list = list(table_dict.values())[0]
 
-  return table_template.format(table_name=next(iter(table_dict)), attrs_sentences='')
+  for table in table_dict:
+    attr_by_table = build_columns_sentences(attr_list)
+
+  return table_template.format(table_name=next(iter(table_dict)), attrs_sentences=attr_by_table)
+
+def build_columns_sentences(attr_list):
+
+  # TODO: agregar relaciones a los atributos en caso de ser necesarias
+  column_template= """{} varchar(255) NOT NULL DEFAULT '',\n"""
+  columns_script = ""
+  
+  for column in attr_list:
+    attr_name = column[0]
+    columns_script += column_template.format(attr_name)
+    if column == attr_list[-1]:
+      columns_script = columns_script[:-2]
+
+  return columns_script
+
 def getEntities(diagram):
   entities = []
   for node in diagram['diagram']['nodeDataArray']:
@@ -159,7 +177,6 @@ def getRelationships(diagram):
   relationships = []
   for node in diagram['diagram']['nodeDataArray']:
     if node['type'] in ['relation']:
-      print(bcolors.OKGREEN + 'relationship correct' + bcolors.ENDC) if validateOnlyBinarieRelationship(node['key'], diagram) else print(bcolors.FAIL + 'relationship error' + bcolors.ENDC)
       relationships.append(
         (node['text'], node['key'])
         )
@@ -180,15 +197,15 @@ def getEntityWithAtributes(diagram, entity, attrs):
   for node in diagramDict['linkDataArray']:  #pattern matching from & to 
     origin, destiny = node.items()
     if origin[1] == entity[1]:
-      print("match %s entity with attr %s - %s"% (entity[0], origin[1], destiny[1]) )
       for attr in attrs:
         if attr[1] == destiny[1]:
           entityWithAttr.append(attr)
     if destiny[1] == entity[1]:
-      print("match %s entity with attr %s - %s"% (entity[0], destiny[1], origin[1]) )
       for attr in attrs:
         if attr[1] == origin[1]:
           entityWithAttr.append(attr)
+
+  return { entity[0] : entityWithAttr }
 
 projectName = "test_sql"
 
@@ -196,6 +213,7 @@ entities = getEntities(diagram)
 attrs = getAttrs(diagram)
 relations = getRelationships(diagram)
 entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+#TODO: Crear Tabla cuando la cardunalidad de las relaciones en N:M
 
 script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs)
 
