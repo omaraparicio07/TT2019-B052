@@ -132,6 +132,14 @@ def getRelationships(diagram):
         )
   return relationships
 
+def validateOnlyBinarieRelationship(relationKey, diagram):
+  count = 0
+  for node in diagram['diagram']['linkDataArray']:
+    if node['from'] == relationKey or node['to'] == relationKey:
+      count += 1
+  return True if count == 2 else False
+
+
 def getEntityWithAtributes(diagram, entity, attrs):
   print(f"{bcolors.OKCYAN} {entity} {bcolors.ENDC}")
   diagramDict = diagram['diagram']
