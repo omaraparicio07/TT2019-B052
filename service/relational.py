@@ -218,12 +218,29 @@ def getRelationsNM(diagram, relationship):
           attr_nm_relation.append(node['to'])
   return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
+def validateKeyAttibute(entity_with_attrs):
+  attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
+  primary_key = [attr for attr in attrs if attr[2] == 'keyAttribute']
+  print(primary_key)
+  if primary_key:
+    print(f"this attribute cointain primary key {bcolors.OKGREEN}CONTINUE{bcolors.ENDC}")
+  else:
+    print(f"this NO attribute cointain primary key {bcolors.FAIL} ERROR {bcolors.ENDC}")
+
+  return None
+
 projectName = "test_sql"
 
 entities = getEntities(diagram)
 attrs = getAttrs(diagram)
-relations = getRelationships(diagram)
 entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+print("-"*10)
+entitiesWithAttrs_validation = [validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
+relations = getRelationships(diagram)
+relations_NM_to_table = [getRelationsNM(diagram, relationship ) for relationship in relations]
+print(relations_NM_to_table)
+relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
+print(relations_NM_to_table)
 #TODO: Crear Tabla cuando la cardunalidad de las relaciones en N:M
 
 script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs)
