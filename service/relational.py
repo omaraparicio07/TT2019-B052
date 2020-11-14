@@ -4,48 +4,53 @@ diagram = {
   "diagram": {
     "class": "GraphLinksModel",
     "modelData": {
-      "position": "-659.5028514418491 -993.572273697964"
+      "position": "-435.4971485581509 -328.4277263020359"
     },
     "nodeDataArray": [
       {
         "type": "entity",
-        "text": "Student",
+        "text": "Pedido",
         "figure": "Rectangle",
         "fill": "white",
         "key": -1,
-        "loc": "-460 -760"
+        "loc": "-210 -110",
+        "Comments": ""
       },
       {
-        "type": "atribute",
-        "text": "id",
+        "type": "keyAttribute",
+        "text": "Id",
         "figure": "Ellipse",
         "fill": "white",
-        "key": -3,
-        "loc": "-610 -780"
-      },
-      {
-        "type": "entity",
-        "text": "Subject",
-        "figure": "Rectangle",
-        "fill": "white",
-        "key": -4,
-        "loc": "0 -760"
-      },
-      {
-        "type": "atribute",
-        "text": "Full_name",
-        "figure": "Ellipse",
-        "fill": "white",
-        "key": -5,
-        "loc": "-480 -590"
+        "key": -2,
+        "loc": "-210 -210",
+        "Comments": ""
       },
       {
         "type": "relation",
-        "text": "Have",
+        "text": "realiza",
         "figure": "Diamond",
         "fill": "white",
-        "key": -8,
-        "loc": "-220 -760"
+        "key": -3,
+        "loc": "20 -110",
+        "Comments": ""
+      },
+      {
+        "type": "entity",
+        "text": "Cliente",
+        "figure": "Rectangle",
+        "fill": "white",
+        "key": -4,
+        "loc": "220 -120",
+        "Comments": ""
+      },
+      {
+        "type": "atribute",
+        "text": "nombre",
+        "figure": "Ellipse",
+        "fill": "white",
+        "key": -5,
+        "loc": "250 -10",
+        "Comments": ""
       },
       {
         "type": "atribute",
@@ -53,41 +58,107 @@ diagram = {
         "figure": "Ellipse",
         "fill": "white",
         "key": -6,
-        "loc": "150 -800"
+        "loc": "280 -210",
+        "Comments": ""
       },
       {
         "type": "atribute",
-        "text": "Name_class",
+        "text": "fecha",
         "figure": "Ellipse",
         "fill": "white",
         "key": -7,
-        "loc": "100 -650"
+        "loc": "-350 -110",
+        "Comments": ""
+      },
+      {
+        "type": "entity",
+        "text": "articulo",
+        "figure": "Rectangle",
+        "fill": "white",
+        "key": -8,
+        "loc": "-210 130",
+        "Comments": ""
+      },
+      {
+        "type": "keyAttribute",
+        "text": "sku",
+        "figure": "Ellipse",
+        "fill": "white",
+        "key": -9,
+        "loc": "-210 240",
+        "Comments": ""
+      },
+      {
+        "type": "atribute",
+        "text": "num_serie",
+        "figure": "Ellipse",
+        "fill": "white",
+        "key": -10,
+        "loc": "-350 130",
+        "Comments": ""
+      },
+      {
+        "type": "relation",
+        "text": "se compone",
+        "figure": "Diamond",
+        "fill": "white",
+        "key": -11,
+        "loc": "-210 10",
+        "Comments": ""
       }
     ],
     "linkDataArray": [
       {
-        "from": -1,
-        "to": -3
+        "from": -2,
+        "to": -1,
+        "toText": "",
+        "fromText": ""
       },
       {
         "from": -1,
-        "to": -5
-      },
-      {
-        "from": -6,
-        "to": -4
-      },
-      {
-        "from": -4,
         "to": -7
       },
       {
         "from": -1,
-        "to": -8
+        "to": -3,
+        "toText": "1",
+        "fromText": "M"
+      },
+      {
+        "from": -3,
+        "to": -4,
+        "toText": "1",
+        "fromText": "M"
+      },
+      {
+        "from": -6,
+        "to": -4,
+        "toText": "",
+        "fromText": ""
+      },
+      {
+        "from": -4,
+        "to": -5
       },
       {
         "from": -8,
-        "to": -4
+        "to": -9
+      },
+      {
+        "from": -8,
+        "to": -10
+      },
+      {
+        "from": -1,
+        "to": -11,
+        "toText": "N",
+        "fromText": "M"
+      },
+      {
+        "from": -11,
+        "to": -8,
+        "toText": "N",
+        "fromText": "M"
       }
     ]
   }
@@ -104,8 +175,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def getSentencesSQL(project_name, entitiesWithAttrs):
+def getSentencesSQL(project_name, entitiesWithAttrs, relations_NM_to_table_with_attr):
   database_template = """
+DROP DATABASE if exists {db_name};
 CREATE DATABASE {db_name};
 USE {db_name};
 """
@@ -113,6 +185,12 @@ USE {db_name};
   script_sentences = database_template.format(db_name=project_name)
 
   for table in entitiesWithAttrs:
+    # get name table in dict with next(iter(table))
+    script_sentences += build_table_sentence(table)
+
+  script_sentences +="------- Table Relationships N:M -------------"
+
+  for table in relations_NM_to_table_with_attr:
     # get name table in dict with next(iter(table))
     script_sentences += build_table_sentence(table)
 
@@ -126,20 +204,17 @@ def build_table_sentence(table_dict):
 DROP TABLE IF EXISTS {table_name} CASCADE;
 -- step 2. create table 
 CREATE TABLE IF NOT EXISTS {table_name} (
--- step 3. create columns dinamically with next nomenclature
--- column_name data_type(length) [NOT NULL] [DEFAULT value] [AUTO_INCREMENT] column_constraint;
-  ----- ****** Attributes table ****** ------
 {attrs_sentences}
-  ----- ****** Constraints table ****** ------
 ) ENGINE=InnoDB;
 """
   attr_by_table = ""
   attr_list = list(table_dict.values())[0]
+  table_name = next(iter(table_dict))[0].replace(" ", "_")
 
   for table in table_dict:
     attr_by_table = build_columns_sentences(attr_list)
 
-  return table_template.format(table_name=next(iter(table_dict)), attrs_sentences=attr_by_table)
+  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table)
 
 def build_columns_sentences(attr_list):
 
@@ -148,7 +223,7 @@ def build_columns_sentences(attr_list):
   columns_script = ""
   
   for column in attr_list:
-    attr_name = column[0]
+    attr_name = column[0].replace(" ", "_")
     columns_script += column_template.format(attr_name)
     if column == attr_list[-1]:
       columns_script = columns_script[:-2]
@@ -204,7 +279,7 @@ def getEntityWithAtributes(diagram, entity, attrs):
         if attr[1] == node['from']:
           entityWithAttr.append(attr)
 
-  return { entity[0] : entityWithAttr }
+  return { entity : entityWithAttr }
 
 def getRelationsNM(diagram, relationship):
   attr_nm_relation = []
@@ -229,6 +304,15 @@ def validateKeyAttibute(entity_with_attrs):
 
   return None
 
+def getAttrsNMRelation(entitiesWithAttrs, relation_nm):
+  attr_nm_relation = []
+  for entity_attrs in entitiesWithAttrs:
+    if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
+      primary_key = [attr for attr in next(iter(entity_attrs.values())) if attr[2] == 'keyAttribute']
+      attr_nm_relation.append(primary_key.pop())
+
+  return {next(iter(relation_nm)) : attr_nm_relation}
+
 projectName = "test_sql"
 
 entities = getEntities(diagram)
@@ -238,13 +322,19 @@ print("-"*10)
 entitiesWithAttrs_validation = [validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
 relations = getRelationships(diagram)
 relations_NM_to_table = [getRelationsNM(diagram, relationship ) for relationship in relations]
-print(relations_NM_to_table)
 relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
-print(relations_NM_to_table)
-#TODO: Crear Tabla cuando la cardunalidad de las relaciones en N:M
+relations_NM_to_table_with_attr = [getAttrsNMRelation(entitiesWithAttrs, relation_nm) for  relation_nm in relations_NM_to_table]
 
-script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs)
+script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs, relations_NM_to_table_with_attr)
 
 print("*"*20)
-print(entitiesWithAttrs)
+# print(relations)
+# print(relations_NM_to_table)
 print(script_sql_sentences)
+
+
+### TODOLIST
+#TODO: Crear Tabla cuando la cardunalidad de las relaciones en N:M  80%
+#TODO: Crear atributos cuando la cardunalidad de las relaciones en 1:M, 1:1, 1:0
+#TODO: Revisar como agregar tipo de dato a los atributos
+#TODO: Agregar las foreing keys para relaciones N:M
