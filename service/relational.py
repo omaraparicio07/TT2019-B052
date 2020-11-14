@@ -169,7 +169,7 @@ def getAttrs(diagram):
   for node in diagram['diagram']['nodeDataArray']:
     if node['type'] in ['atribute', 'atributeDerived', 'keyAttribute', 'atributeComposite']:
       attrs.append(
-        (node['text'], node['key'])
+        (node['text'], node['key'], node['type'])
         )
   return attrs
 
@@ -205,6 +205,18 @@ def getEntityWithAtributes(diagram, entity, attrs):
           entityWithAttr.append(attr)
 
   return { entity[0] : entityWithAttr }
+
+def getRelationsNM(diagram, relationship):
+  attr_nm_relation = []
+  diagramDict = diagram['diagram']
+  for node in diagramDict['linkDataArray']:
+    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+      if node['toText'] in ['N','M'] and node['fromText'] in ['N','M']:
+        if node['to'] == relationship[1]:
+          attr_nm_relation.append(node['from'])
+        if node['from'] == relationship[1]:
+          attr_nm_relation.append(node['to'])
+  return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
 projectName = "test_sql"
 
