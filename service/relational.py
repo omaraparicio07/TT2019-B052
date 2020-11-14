@@ -194,15 +194,14 @@ def getEntityWithAtributes(diagram, entity, attrs):
   print(f"{bcolors.OKCYAN} {entity} {bcolors.ENDC}")
   diagramDict = diagram['diagram']
   entityWithAttr = []
-  for node in diagramDict['linkDataArray']:  #pattern matching from & to 
-    origin, destiny = node.items()
-    if origin[1] == entity[1]:
+  for node in diagramDict['linkDataArray']:  #pattern matching from & to
+    if node['from'] == entity[1]:
       for attr in attrs:
-        if attr[1] == destiny[1]:
+        if attr[1] == node['to']:
           entityWithAttr.append(attr)
-    if destiny[1] == entity[1]:
+    if node['to'] == entity[1]:
       for attr in attrs:
-        if attr[1] == origin[1]:
+        if attr[1] == node['from']:
           entityWithAttr.append(attr)
 
   return { entity[0] : entityWithAttr }
