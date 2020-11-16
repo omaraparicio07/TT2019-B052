@@ -252,6 +252,7 @@ def getRelationships(diagram):
   relationships = []
   for node in diagram['diagram']['nodeDataArray']:
     if node['type'] in ['relation']:
+      print(validateOnlyBinarieRelationship(node['key'], diagram))
       relationships.append(
         (node['text'], node['key'])
         )
@@ -260,7 +261,9 @@ def getRelationships(diagram):
 def validateOnlyBinarieRelationship(relationKey, diagram):
   count = 0
   for node in diagram['diagram']['linkDataArray']:
-    if node['from'] == relationKey or node['to'] == relationKey:
+    if node['from'] == relationKey and [entity for entity in entities if entity[1] == node['to']]:
+      count += 1
+    if node['to'] == relationKey and [entity for entity in entities if entity[1] == node['from']]:
       count += 1
   return True if count == 2 else False
 
