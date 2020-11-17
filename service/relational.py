@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
   for table in table_dict:
     attr_by_table = build_columns_sentences(attr_list)
     primary_key = buildPrimaryKey(attr_list)
-  return table_template.format(table_name=table_name, attrs_sentences=",\n".join(attr_by_table), primary_key=primary_key, foreing_keys='')
+  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys='')
 
 def build_table_nm_sentence(table_dict):
 
@@ -245,18 +245,22 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 ) ENGINE=InnoDB;
 """
   attr_by_table = ""
-  attr_list = next(iter(table_dict.values())).get('primary_keys')
+  attr_primarykey_list = next(iter(table_dict.values())).get('primary_keys')
+  attr_relation_list = next(iter(table_dict.values())).get('attr_relationship')
   foreingKeys_list = next(iter(table_dict.values())).get('foreing_keys')
   table_name = next(iter(table_dict))[0].replace(" ", "_")
 
   for table in table_dict:
-    attr_by_table = build_columns_nm(attr_list)
-    primary_key = "PRIMARY KEY ({})".format(",".join([attr for attr in attr_list]))
+    attr_by_table = build_columns_nm(attr_primarykey_list)
+    if attr_relation_list:
+      attr_by_table += ",\n"
+      attr_by_table += build_columns_sentences(attr_relation_list)
+    primary_key = "PRIMARY KEY ({})".format(",".join([attr for attr in attr_primarykey_list]))
     if foreingKeys_list:
       primary_key += ","
-      foreing_keys = buildForeingKeys(attr_list)
+      foreing_keys = buildForeingKeys(attr_primarykey_list)
 
-  return table_template.format(table_name=table_name, attrs_sentences=",\n".join(attr_by_table), primary_key=primary_key, foreing_keys=foreing_keys)
+  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
 
 def buildPrimaryKey(attr_list):
   primary_key_sentence = "PRIMARY KEY ({})"
@@ -280,7 +284,7 @@ def build_columns_sentences(attr_list):
     attr_name = column[0].replace(" ", "_")
     columns_script.append(column_template.format(attr_name))
 
-  return columns_script
+  return ",\n".join(columns_script)
 
 def build_columns_nm(attr_list):
 
@@ -291,7 +295,7 @@ def build_columns_nm(attr_list):
     attr_name = column.replace(" ", "_")
     columns_script.append(column_template.format(attr_name))
 
-  return columns_script
+  return ",\n".join(columns_script)
 
 def getEntities(diagram):
   entities = []
@@ -369,14 +373,17 @@ def validateKeyAttibute(entity_with_attrs):
 
 def getAttrsNMRelation(entitiesWithAttrs, relation_nm):
   attr_nm_relation = []
+  primary_keys = []
   foreing_keys = []
   for entity_attrs in entitiesWithAttrs:
     if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
       primary_key = [attr[0] for attr in next(iter(entity_attrs.values())) if attr[2] == 'keyAttribute']
       ref_table = next(iter(entity_attrs))
-      attr_nm_relation.append(f"{primary_key[0]}_{ref_table[0].lower()}")
+      primary_keys.append(f"{primary_key[0]}_{ref_table[0].lower()}")
       foreing_keys.append(ref_table[0])
-  return {next(iter(relation_nm)) : {"primary_keys" : attr_nm_relation, "foreing_keys" : foreing_keys}}
+  attr_nm_relation = [getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
+  print(f"Props de relacion {next(iter(attr_nm_relation[0].values()))}")
+  return {next(iter(relation_nm)) : {"primary_keys" : primary_keys, "foreing_keys" : foreing_keys, "attr_relationship": next(iter(attr_nm_relation[0].values()))}}
 
 projectName = "test_sql"
 
