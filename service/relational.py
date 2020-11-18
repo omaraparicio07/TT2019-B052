@@ -18,7 +18,7 @@ diagram = {
       },
       {
         "type": "keyAttribute",
-        "text": "id",
+        "text": "idP",
         "figure": "Ellipse",
         "fill": "white",
         "key": -2,
@@ -54,7 +54,7 @@ diagram = {
       },
       {
         "type": "keyAttribute",
-        "text": "id",
+        "text": "idC",
         "figure": "Ellipse",
         "fill": "white",
         "key": -6,
@@ -131,13 +131,13 @@ diagram = {
         "from": -1,
         "to": -3,
         "toText": "1",
-        "fromText": "M"
+        "fromText": "N"
       },
       {
         "from": -3,
         "to": -4,
         "toText": "1",
-        "fromText": "M"
+        "fromText": "N"
       },
       {
         "from": -6,
@@ -222,14 +222,22 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 {foreing_keys}
 ) ENGINE=InnoDB;
 """
-  # attr_by_table = ""
-  attr_list = list(table_dict.values())[0]
+  attr_by_table = ""
+  primarykey = next(iter(table_dict.values())).get('primary_key')
+  attr_list = next(iter(table_dict.values())).get('attributes')
+  foreingKeys = next(iter(table_dict.values())).get('foreing_keys')
   table_name = next(iter(table_dict))[0].replace(" ", "_")
+  foreing_keys=""
+  primary_key=""
 
   for table in table_dict:
     attr_by_table = build_columns_sentences(attr_list)
     primary_key = buildPrimaryKey(attr_list)
-  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys='')
+    if foreingKeys:
+      primary_key += ","
+      foreing_keys = buildForeingKeys(foreingKeys)
+
+  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
 
 def build_table_nm_sentence(table_dict):
 
@@ -249,6 +257,8 @@ CREATE TABLE IF NOT EXISTS {table_name} (
   attr_relation_list = next(iter(table_dict.values())).get('attr_relationship')
   foreingKeys_list = next(iter(table_dict.values())).get('foreing_keys')
   table_name = next(iter(table_dict))[0].replace(" ", "_")
+  foreing_keys=""
+  primary_key=""
 
   for table in table_dict:
     attr_by_table = build_columns_nm(attr_primarykey_list)
@@ -346,8 +356,9 @@ def getEntityWithAtributes(diagram, entity, attrs):
       for attr in attrs:
         if attr[1] == node['from']:
           entityWithAttr.append(attr)
+  primary_key = validateKeyAttibute({ entity : entityWithAttr })
 
-  return { entity : entityWithAttr }
+  return { entity : {'attributes':entityWithAttr, 'primary_key': primary_key, 'foreing_keys':[] } }
 
 def getRelationsNM(diagram, relationship):
   attr_nm_relation = []
@@ -361,15 +372,16 @@ def getRelationsNM(diagram, relationship):
           attr_nm_relation.append(node['to'])
   return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
+
 def validateKeyAttibute(entity_with_attrs):
   attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
   primary_key = [attr for attr in attrs if attr[2] == 'keyAttribute']
-  if primary_key:
-    print(f"this attribute cointain primary key {bcolors.OKGREEN}CONTINUE{bcolors.ENDC}")
-  else:
-    print(f"this NO attribute cointain primary key {bcolors.FAIL} ERROR {bcolors.ENDC}")
+  # if primary_key:
+  #   print(f"this attribute cointain primary key {bcolors.OKGREEN}CONTINUE{bcolors.ENDC}")
+  # else:
+  #   print(f"this NO attribute cointain primary key {bcolors.FAIL} ERROR {bcolors.ENDC}")
 
-  return None
+  return primary_key
 
 def getAttrsNMRelation(entitiesWithAttrs, relation_nm):
   attr_nm_relation = []
@@ -377,13 +389,12 @@ def getAttrsNMRelation(entitiesWithAttrs, relation_nm):
   foreing_keys = []
   for entity_attrs in entitiesWithAttrs:
     if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
-      primary_key = [attr[0] for attr in next(iter(entity_attrs.values())) if attr[2] == 'keyAttribute']
+      primary_key = next(iter(entity_attrs.values()))['primary_key'][0]
       ref_table = next(iter(entity_attrs))
       primary_keys.append(f"{primary_key[0]}_{ref_table[0].lower()}")
       foreing_keys.append(ref_table[0])
   attr_nm_relation = [getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
-  print(f"Props de relacion {next(iter(attr_nm_relation[0].values()))}")
-  return {next(iter(relation_nm)) : {"primary_keys" : primary_keys, "foreing_keys" : foreing_keys, "attr_relationship": next(iter(attr_nm_relation[0].values()))}}
+  return {next(iter(relation_nm)) : {"primary_keys" : primary_keys, "foreing_keys" : foreing_keys, "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']}}
 
 projectName = "test_sql"
 
@@ -393,19 +404,13 @@ entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity i
 entitiesWithAttrs_validation = [validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
 relations = getRelationships(diagram)
 relations_NM_to_table = [getRelationsNM(diagram, relationship ) for relationship in relations]
+relations_1M = [getRelations1M(diagram, relationship ) for relationship in relations]
+relations_1M = [ i for i in relations_1M if i]
+setForeingKey(relations_1M.pop())
 relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
 relations_NM_to_table_with_attr = [getAttrsNMRelation(entitiesWithAttrs, relation_nm) for  relation_nm in relations_NM_to_table]
 
 script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs, relations_NM_to_table_with_attr)
 
 print("*"*20)
-# print(relations)
-# print(relations_NM_to_table)
 print(script_sql_sentences)
-
-
-### TODOLIST
-#TODO: Crear Tabla cuando la cardunalidad de las relaciones en N:M  80%
-#TODO: Crear atributos cuando la cardunalidad de las relaciones en 1:M, 1:1, 1:0
-#TODO: Revisar como agregar tipo de dato a los atributos
-#TODO: Agregar las foreing keys para relaciones N:M
