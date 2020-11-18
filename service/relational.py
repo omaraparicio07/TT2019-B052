@@ -372,6 +372,45 @@ def getRelationsNM(diagram, relationship):
           attr_nm_relation.append(node['to'])
   return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
+def getRelations1M(diagram, relationship):
+  """
+  Función para obtener las relaciones 1 a muchos del diagrama entidad relación
+  """
+  attr_nm_relation = []
+  diagramDict = diagram['diagram']
+  for node in diagramDict['linkDataArray']:
+    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+      if node['toText'] in ['1','N'] and node['fromText'] in ['N','1']:
+        if node['to'] == relationship[1] :
+          attr_nm_relation.append((node['from'], node['fromText']))
+        if node['from'] == relationship[1] :
+          attr_nm_relation.append((node['to'], node['toText']))
+  return {relationship :  attr_nm_relation} if attr_nm_relation else None
+
+def setForeingKey(relations_1N_cardinality):
+
+  table_ref = ""
+  attr_fk = ""
+  table_fk = ""
+  for key in next(iter(relations_1N_cardinality.values())):
+    attributes_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
+    if key[1] == '1':
+      pk_ref = next(iter(attributes_entity[0].values()))['primary_key'][0]
+      ref_table = next(iter(attributes_entity[0]))
+      table_ref = ref_table[0]
+      attr_fk = f"{pk_ref[0]}_{ref_table[0].lower()}"
+    if key[1] == 'N':
+      table_fk = [ entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
+      ref_table = next(iter(table_fk[0]))
+      table_fk = attributes_entity
+  # obtenemos el indice del diccionario de la entidad a modificar
+  index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
+  # agregamos el atributo a la lista de atributos de la entidad
+  next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+  # agregamos el atributo a las llaves foraneas de la entidad
+  next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
+  
+  return None
 
 def validateKeyAttibute(entity_with_attrs):
   attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
