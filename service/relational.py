@@ -17,6 +17,33 @@ diagram = {
         "Comments": ""
       },
       {
+        "type": "entity",
+        "text": "Persona",
+        "figure": "Rectangle",
+        "fill": "white",
+        "key": -13,
+        "loc": "-110 -10",
+        "Comments": ""
+      },
+      {
+        "type": "keyAttribute",
+        "text": "CURP",
+        "figure": "Ellipse",
+        "fill": "white",
+        "key": -15,
+        "loc": "-180 -60",
+        "Comments": ""
+      },
+      {
+        "type": "atribute",
+        "text": "nombre",
+        "figure": "Ellipse",
+        "fill": "white",
+        "key": -16,
+        "loc": "-180 -60",
+        "Comments": ""
+      },
+      {
         "type": "keyAttribute",
         "text": "idP",
         "figure": "Ellipse",
@@ -107,6 +134,15 @@ diagram = {
         "Comments": ""
       },
       {
+        "type": "relation",
+        "text": "es",
+        "figure": "Diamond",
+        "fill": "white",
+        "key": -14,
+        "loc": "-210 10",
+        "Comments": ""
+      },
+      {
         "type": "atribute",
         "text": "cantidad",
         "figure": "Diamond",
@@ -146,8 +182,28 @@ diagram = {
         "fromText": ""
       },
       {
+        "from": -13,
+        "to": -14,
+        "toText": "1",
+        "fromText": "1"
+      },
+      {
+        "from": -14,
+        "to": -4,
+        "toText": "1",
+        "fromText": "1"
+      },
+      {
         "from": -4,
         "to": -5
+      },
+      {
+        "from": -16,
+        "to": -13
+      },
+      {
+        "from": -15,
+        "to": -13
       },
       {
         "from": -8,
@@ -387,6 +443,21 @@ def getRelations1M(diagram, relationship):
           attr_nm_relation.append((node['to'], node['toText']))
   return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
+def getRelations11(diagram, relationship):
+  """
+  Función para obtener las relaciones 1 a 1 del diagrama entidad relación
+  """
+  attr_nm_relation = []
+  diagramDict = diagram['diagram']
+  for node in diagramDict['linkDataArray']:
+    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+      if node['toText'] == '1' and node['fromText'] == '1':
+        if node['to'] == relationship[1] :
+          attr_nm_relation.append((node['from'], node['fromText']))
+        if node['from'] == relationship[1] :
+          attr_nm_relation.append((node['to'], node['toText']))
+  return {relationship :  attr_nm_relation} if attr_nm_relation else None
+
 def setForeingKey(relations_1N_cardinality):
 
   table_ref = ""
@@ -411,6 +482,32 @@ def setForeingKey(relations_1N_cardinality):
   next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
   
   return None
+
+def setForeingKey11(relations_1_1_cardinality):
+
+  l_table, r_table = next(iter(relations_1_1_cardinality.values()))
+  print(f"LT {l_table} RL {r_table}")
+  # obtenemos las entidades de la relacion con sus atributos
+  attributes_l_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == l_table[0]]
+  attributes_r_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == r_table[0]]
+  ## obtener la llave primararia de la tabla 'izquierda'
+  pk_l_entity = next(iter(attributes_l_entity[0].values()))['primary_key'][0]
+  #formamos la llave forarea con la pk de la tabal izquierda concatenando el nombre de la entidad
+  ref_table = next(iter(attributes_l_entity[0]))
+  attr_fk = f"{pk_l_entity[0]}_{ref_table[0].lower()}"
+
+  # recuperamos el indice de la tabla 'R' a modificar 
+  index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == attributes_r_entity[0])
+  
+  # print(f"llave foranea queda asi, {attr_fk} en la tabla {attributes_r_entity[0]} ")
+  # print(f"la tabla R recibe la fk { attributes_r_entity[0]} en el indice {index_entity}")
+  # print(f" la pk de la tabla izq {pk_l_entity}")
+
+
+  #Agregamos el atributo a la tabla R
+  next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+  # agregamos el atributo a las llaves foraneas de la entidad de la tabla R
+  next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
 
 def validateKeyAttibute(entity_with_attrs):
   attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
@@ -445,7 +542,11 @@ relations = getRelationships(diagram)
 relations_NM_to_table = [getRelationsNM(diagram, relationship ) for relationship in relations]
 relations_1M = [getRelations1M(diagram, relationship ) for relationship in relations]
 relations_1M = [ i for i in relations_1M if i]
-setForeingKey(relations_1M.pop())
+setForeingKey(relations_1M[0])
+relations_1_1 = [getRelations11(diagram, relationship ) for relationship in relations]
+relations_1_1 = [i for i in relations_1_1 if i]
+print(relations_1_1)
+setForeingKey11(relations_1_1[0])
 relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
 relations_NM_to_table_with_attr = [getAttrsNMRelation(entitiesWithAttrs, relation_nm) for  relation_nm in relations_NM_to_table]
 
