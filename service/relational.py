@@ -233,324 +233,320 @@ diagram = {
   }
 }
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-def getSentencesSQL(project_name, entitiesWithAttrs, relations_NM_to_table_with_attr):
-  database_template = """
-DROP DATABASE if exists {db_name};
-CREATE DATABASE {db_name};
-USE {db_name};
-"""
-
-  script_sentences = database_template.format(db_name=project_name)
-
-  for table in entitiesWithAttrs:
-    # get name table in dict with next(iter(table))
-    script_sentences += build_table_sentence(table)
-
-  script_sentences +="------- Table Relationships N:M -------------"
-
-  for table in relations_NM_to_table_with_attr:
-    # get name table in dict with next(iter(table))
-    script_sentences += build_table_nm_sentence(table)
-
-  return script_sentences
-
-def build_table_sentence(table_dict):
-
-  table_template = """
----------------- CREATE TABLE ----------------
--- step 1. drop table if exists
-DROP TABLE IF EXISTS {table_name} CASCADE;
--- step 2. create table 
-CREATE TABLE IF NOT EXISTS {table_name} (
-{attrs_sentences},
-{primary_key}
-{foreing_keys}
-) ENGINE=InnoDB;
-"""
-  attr_by_table = ""
-  primarykey = next(iter(table_dict.values())).get('primary_key')
-  attr_list = next(iter(table_dict.values())).get('attributes')
-  foreingKeys = next(iter(table_dict.values())).get('foreing_keys')
-  table_name = next(iter(table_dict))[0].replace(" ", "_")
-  foreing_keys=""
-  primary_key=""
-
-  for table in table_dict:
-    attr_by_table = build_columns_sentences(attr_list)
-    primary_key = buildPrimaryKey(attr_list)
-    if foreingKeys:
-      primary_key += ","
-      foreing_keys = buildForeingKeys(foreingKeys)
-
-  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
-
-def build_table_nm_sentence(table_dict):
-
-  table_template = """
----------------- CREATE TABLE NM relationship----------------
--- step 1. drop table if exists
-DROP TABLE IF EXISTS {table_name} CASCADE;
--- step 2. create table 
-CREATE TABLE IF NOT EXISTS {table_name} (
-{attrs_sentences},
-{primary_key}
-{foreing_keys}
-) ENGINE=InnoDB;
-"""
-  attr_by_table = ""
-  attr_primarykey_list = next(iter(table_dict.values())).get('primary_keys')
-  attr_relation_list = next(iter(table_dict.values())).get('attr_relationship')
-  foreingKeys_list = next(iter(table_dict.values())).get('foreing_keys')
-  table_name = next(iter(table_dict))[0].replace(" ", "_")
-  foreing_keys=""
-  primary_key=""
-
-  for table in table_dict:
-    attr_by_table = build_columns_nm(attr_primarykey_list)
-    if attr_relation_list:
-      attr_by_table += ",\n"
-      attr_by_table += build_columns_sentences(attr_relation_list)
-    primary_key = "PRIMARY KEY ({})".format(",".join([attr for attr in attr_primarykey_list]))
-    if foreingKeys_list:
-      primary_key += ","
-      foreing_keys = buildForeingKeys(attr_primarykey_list)
-
-  return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
-
-def buildPrimaryKey(attr_list):
-  primary_key_sentence = "PRIMARY KEY ({})"
-  primary_key = [attr[0] for attr in attr_list if attr[2] == 'keyAttribute']
-  return primary_key_sentence.format(",".join(primary_key))
-
-def buildForeingKeys(attr_list):
-  foreing_key_sentence = "FOREIGN KEY ({attr_name}) REFERENCES {ref_table_name} ({attr_ref_table})"
-  fk_list = []
-  for attr in attr_list:
-    attr_ref_table, ref_table = attr.split("_")
-    fk_list.append(f"FOREIGN KEY ({attr}) REFERENCES {ref_table} ({attr_ref_table})")
-  return ",\n".join(fk_list)
-
-def build_columns_sentences(attr_list):
-
-  # TODO: agregar relaciones a los atributos en caso de ser necesarias
-  column_template= "{} varchar(255) NOT NULL DEFAULT ''"
-  columns_script = []
-  for column in attr_list:
-    attr_name = column[0].replace(" ", "_")
-    columns_script.append(column_template.format(attr_name))
-
-  return ",\n".join(columns_script)
-
-def build_columns_nm(attr_list):
-
-  # TODO: agregar relaciones a los atributos en caso de ser necesarias
-  column_template= "{} varchar(255) NOT NULL DEFAULT ''"
-  columns_script = []
-  for column in attr_list:
-    attr_name = column.replace(" ", "_")
-    columns_script.append(column_template.format(attr_name))
-
-  return ",\n".join(columns_script)
-
-def getEntities(diagram):
-  entities = []
-  for node in diagram['diagram']['nodeDataArray']:
-    if node['type'] == 'entity':
-      entities.append(
-        (node['text'], node['key'])
-        )
-  return entities
-
-def getAttrs(diagram):
-  attrs = []
-  for node in diagram['diagram']['nodeDataArray']:
-    if node['type'] in ['atribute', 'atributeDerived', 'keyAttribute', 'atributeComposite']:
-      attrs.append(
-        (node['text'], node['key'], node['type'])
-        )
-  return attrs
-
-def getRelationships(diagram):
-  relationships = []
-  for node in diagram['diagram']['nodeDataArray']:
-    if node['type'] in ['relation']:
-      relationships.append(
-        (node['text'], node['key'])
-        )
-  return relationships
-
-def validateOnlyBinarieRelationship(relationKey, diagram):
-  count = 0
-  for node in diagram['diagram']['linkDataArray']:
-    if node['from'] == relationKey and [entity for entity in entities if entity[1] == node['to']]:
-      count += 1
-    if node['to'] == relationKey and [entity for entity in entities if entity[1] == node['from']]:
-      count += 1
-  return True if count == 2 else False
-
-
-def getEntityWithAtributes(diagram, entity, attrs):
-  diagramDict = diagram['diagram']
-  entityWithAttr = []
-  for node in diagramDict['linkDataArray']:  #pattern matching from & to
-    if node['from'] == entity[1]:
-      for attr in attrs:
-        if attr[1] == node['to']:
-          entityWithAttr.append(attr)
-    if node['to'] == entity[1]:
-      for attr in attrs:
-        if attr[1] == node['from']:
-          entityWithAttr.append(attr)
-  primary_key = validateKeyAttibute({ entity : entityWithAttr })
-
-  return { entity : {'attributes':entityWithAttr, 'primary_key': primary_key, 'foreing_keys':[] } }
-
-def getRelationsNM(diagram, relationship):
-  attr_nm_relation = []
-  diagramDict = diagram['diagram']
-  for node in diagramDict['linkDataArray']:
-    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-      if node['toText'] in ['N','M'] and node['fromText'] in ['N','M']:
-        if node['to'] == relationship[1]:
-          attr_nm_relation.append(node['from'])
-        if node['from'] == relationship[1]:
-          attr_nm_relation.append(node['to'])
-  return {relationship :  attr_nm_relation} if attr_nm_relation else None
-
-def getRelations1M(diagram, relationship):
+class Relational():
   """
-  Función para obtener las relaciones 1 a muchos del diagrama entidad relación
+  Clase que implementa la obtención de sentencias SQL a partir de un diagrama ER generado por
+  el proyecto: https://github.com/martinez-acosta/TT-2019-B052.git
   """
-  attr_nm_relation = []
-  diagramDict = diagram['diagram']
-  for node in diagramDict['linkDataArray']:
-    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-      if node['toText'] in ['1','N'] and node['fromText'] in ['N','1']:
-        if node['to'] == relationship[1] :
-          attr_nm_relation.append((node['from'], node['fromText']))
-        if node['from'] == relationship[1] :
-          attr_nm_relation.append((node['to'], node['toText']))
-  return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
-def getRelations11(diagram, relationship):
+  def __init__(self,diagram, greet):
+    self.diagram = diagram
+    self.greet = greet
+
+
+  def getSentencesSQL(self, project_name, entitiesWithAttrs, relations_NM_to_table_with_attr):
+    database_template = """
+  DROP DATABASE if exists {db_name};
+  CREATE DATABASE {db_name};
+  USE {db_name};
   """
-  Función para obtener las relaciones 1 a 1 del diagrama entidad relación
+
+    script_sentences = database_template.format(db_name=project_name)
+
+    for table in entitiesWithAttrs:
+      # get name table in dict with next(iter(table))
+      script_sentences += self.build_table_sentence(table)
+
+    script_sentences +="------- Table Relationships N:M -------------"
+
+    for table in relations_NM_to_table_with_attr:
+      # get name table in dict with next(iter(table))
+      script_sentences += self.build_table_nm_sentence(table)
+
+    return script_sentences
+
+  def build_table_sentence(self, table_dict):
+
+    table_template = """
+  ---------------- CREATE TABLE ----------------
+  -- step 1. drop table if exists
+  DROP TABLE IF EXISTS {table_name} CASCADE;
+  -- step 2. create table 
+  CREATE TABLE IF NOT EXISTS {table_name} (
+  {attrs_sentences},
+  {primary_key}
+  {foreing_keys}
+  ) ENGINE=InnoDB;
   """
-  attr_nm_relation = []
-  diagramDict = diagram['diagram']
-  for node in diagramDict['linkDataArray']:
-    if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-      if node['toText'] == '1' and node['fromText'] == '1':
-        if node['to'] == relationship[1] :
-          attr_nm_relation.append((node['from'], node['fromText']))
-        if node['from'] == relationship[1] :
-          attr_nm_relation.append((node['to'], node['toText']))
-  return {relationship :  attr_nm_relation} if attr_nm_relation else None
+    attr_by_table = ""
+    primarykey = next(iter(table_dict.values())).get('primary_key')
+    attr_list = next(iter(table_dict.values())).get('attributes')
+    foreingKeys = next(iter(table_dict.values())).get('foreing_keys')
+    table_name = next(iter(table_dict))[0].replace(" ", "_")
+    foreing_keys=""
+    primary_key=""
 
-def setForeingKey(relations_1N_cardinality):
+    for table in table_dict:
+      attr_by_table = self.build_columns_sentences(attr_list)
+      primary_key = self.buildPrimaryKey(attr_list)
+      if foreingKeys:
+        primary_key += ","
+        foreing_keys = self.buildForeingKeys(foreingKeys)
 
-  table_ref = ""
-  attr_fk = ""
-  table_fk = ""
-  for key in next(iter(relations_1N_cardinality.values())):
-    attributes_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
-    if key[1] == '1':
-      pk_ref = next(iter(attributes_entity[0].values()))['primary_key'][0]
-      ref_table = next(iter(attributes_entity[0]))
-      table_ref = ref_table[0]
-      attr_fk = f"{pk_ref[0]}_{ref_table[0].lower()}"
-    if key[1] == 'N':
-      table_fk = [ entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
-      ref_table = next(iter(table_fk[0]))
-      table_fk = attributes_entity
-  # obtenemos el indice del diccionario de la entidad a modificar
-  index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
-  # agregamos el atributo a la lista de atributos de la entidad
-  next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
-  # agregamos el atributo a las llaves foraneas de la entidad
-  next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
-  
-  return None
+    return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
 
-def setForeingKey11(relations_1_1_cardinality):
+  def build_table_nm_sentence(self, table_dict):
 
-  l_table, r_table = next(iter(relations_1_1_cardinality.values()))
-  print(f"LT {l_table} RL {r_table}")
-  # obtenemos las entidades de la relacion con sus atributos
-  attributes_l_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == l_table[0]]
-  attributes_r_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == r_table[0]]
-  ## obtener la llave primararia de la tabla 'izquierda'
-  pk_l_entity = next(iter(attributes_l_entity[0].values()))['primary_key'][0]
-  #formamos la llave forarea con la pk de la tabal izquierda concatenando el nombre de la entidad
-  ref_table = next(iter(attributes_l_entity[0]))
-  attr_fk = f"{pk_l_entity[0]}_{ref_table[0].lower()}"
+    table_template = """
+  ---------------- CREATE TABLE NM relationship----------------
+  DROP TABLE IF EXISTS {table_name} CASCADE;
+  CREATE TABLE IF NOT EXISTS {table_name} (
+  {attrs_sentences},
+  {primary_key}
+  {foreing_keys}
+  ) ENGINE=InnoDB;
+  """
+    attr_by_table = ""
+    attr_primarykey_list = next(iter(table_dict.values())).get('primary_keys')
+    attr_relation_list = next(iter(table_dict.values())).get('attr_relationship')
+    foreingKeys_list = next(iter(table_dict.values())).get('foreing_keys')
+    table_name = next(iter(table_dict))[0].replace(" ", "_")
+    foreing_keys=""
+    primary_key=""
 
-  # recuperamos el indice de la tabla 'R' a modificar 
-  index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == attributes_r_entity[0])
-  
-  # print(f"llave foranea queda asi, {attr_fk} en la tabla {attributes_r_entity[0]} ")
-  # print(f"la tabla R recibe la fk { attributes_r_entity[0]} en el indice {index_entity}")
-  # print(f" la pk de la tabla izq {pk_l_entity}")
+    for table in table_dict:
+      attr_by_table = self.build_columns_nm(attr_primarykey_list)
+      if attr_relation_list:
+        attr_by_table += ",\n"
+        attr_by_table += self.build_columns_sentences(attr_relation_list)
+      primary_key = "PRIMARY KEY ({})".format(",".join([attr for attr in attr_primarykey_list]))
+      if foreingKeys_list:
+        primary_key += ","
+        foreing_keys = self.buildForeingKeys(attr_primarykey_list)
+
+    return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
+
+  def buildPrimaryKey(self, attr_list):
+    primary_key_sentence = "PRIMARY KEY ({})"
+    primary_key = [attr[0] for attr in attr_list if attr[2] == 'keyAttribute']
+    return primary_key_sentence.format(",".join(primary_key))
+
+  def buildForeingKeys(self, attr_list):
+    foreing_key_sentence = "FOREIGN KEY ({attr_name}) REFERENCES {ref_table_name} ({attr_ref_table})"
+    fk_list = []
+    for attr in attr_list:
+      attr_ref_table, ref_table = attr.split("_")
+      fk_list.append(f"FOREIGN KEY ({attr}) REFERENCES {ref_table} ({attr_ref_table})")
+    return ",\n".join(fk_list)
+
+  def build_columns_sentences(self, attr_list):
+
+    column_template= "{} varchar(255) NOT NULL DEFAULT ''"
+    columns_script = []
+    for column in attr_list:
+      attr_name = column[0].replace(" ", "_")
+      columns_script.append(column_template.format(attr_name))
+
+    return ",\n".join(columns_script)
+
+  def build_columns_nm(self, attr_list):
+
+    column_template= "{} varchar(255) NOT NULL DEFAULT ''"
+    columns_script = []
+    for column in attr_list:
+      attr_name = column.replace(" ", "_")
+      columns_script.append(column_template.format(attr_name))
+
+    return ",\n".join(columns_script)
+
+  def getEntities(self, diagram):
+    entities = []
+    print(f"las keys del obj diagram {diagram.keys()}")
+    for node in diagram['nodeDataArray']:
+      if node['type'] == 'entity':
+        entities.append(
+          (node['text'], node['key'])
+          )
+    return entities
+
+  def getAttrs(self, diagram):
+    attrs = []
+    for node in diagram['nodeDataArray']:
+      if node['type'] in ['atribute', 'atributeDerived', 'keyAttribute', 'atributeComposite']:
+        attrs.append(
+          (node['text'], node['key'], node['type'])
+          )
+    return attrs
+
+  def getRelationships(self, diagram):
+    relationships = []
+    for node in diagram['nodeDataArray']:
+      if node['type'] in ['relation']:
+        relationships.append(
+          (node['text'], node['key'])
+          )
+    return relationships
+
+  def validateOnlyBinarieRelationship(self, relationKey, diagram):
+    count = 0
+    for node in diagram['linkDataArray']:
+      if node['from'] == relationKey and [entity for entity in entities if entity[1] == node['to']]:
+        count += 1
+      if node['to'] == relationKey and [entity for entity in entities if entity[1] == node['from']]:
+        count += 1
+    return True if count == 2 else False
 
 
-  #Agregamos el atributo a la tabla R
-  next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
-  # agregamos el atributo a las llaves foraneas de la entidad de la tabla R
-  next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
+  def getEntityWithAtributes(self, diagram, entity, attrs):
+    diagramDict = diagram
+    print(f" que paso {diagramDict['linkDataArray']}")
+    entityWithAttr = []
+    for node in diagramDict['linkDataArray']:  #pattern matching from & to
+      if node['from'] == entity[1]:
+        for attr in attrs:
+          if attr[1] == node['to']:
+            entityWithAttr.append(attr)
+      if node['to'] == entity[1]:
+        for attr in attrs:
+          if attr[1] == node['from']:
+            entityWithAttr.append(attr)
+    primary_key = self.validateKeyAttibute({ entity : entityWithAttr })
 
-def validateKeyAttibute(entity_with_attrs):
-  attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
-  primary_key = [attr for attr in attrs if attr[2] == 'keyAttribute']
-  # if primary_key:
-  #   print(f"this attribute cointain primary key {bcolors.OKGREEN}CONTINUE{bcolors.ENDC}")
-  # else:
-  #   print(f"this NO attribute cointain primary key {bcolors.FAIL} ERROR {bcolors.ENDC}")
+    return { entity : {'attributes':entityWithAttr, 'primary_key': primary_key, 'foreing_keys':[] } }
 
-  return primary_key
+  def getRelationsNM(self, diagram, relationship):
+    attr_nm_relation = []
+    diagramDict = diagram
+    for node in diagramDict['linkDataArray']:
+      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+        if node['toText'] in ['N','M'] and node['fromText'] in ['N','M']:
+          if node['to'] == relationship[1]:
+            attr_nm_relation.append(node['from'])
+          if node['from'] == relationship[1]:
+            attr_nm_relation.append(node['to'])
+    return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
-def getAttrsNMRelation(entitiesWithAttrs, relation_nm):
-  attr_nm_relation = []
-  primary_keys = []
-  foreing_keys = []
-  for entity_attrs in entitiesWithAttrs:
-    if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
-      primary_key = next(iter(entity_attrs.values()))['primary_key'][0]
-      ref_table = next(iter(entity_attrs))
-      primary_keys.append(f"{primary_key[0]}_{ref_table[0].lower()}")
-      foreing_keys.append(ref_table[0])
-  attr_nm_relation = [getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
-  return {next(iter(relation_nm)) : {"primary_keys" : primary_keys, "foreing_keys" : foreing_keys, "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']}}
+  def getRelations1M(self, diagram, relationship):
+    """
+    Función para obtener las relaciones 1 a muchos del diagrama entidad relación
+    """
+    attr_nm_relation = []
+    diagramDict = diagram
+    for node in diagramDict['linkDataArray']:
+      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+        if node['toText'] in ['1','N'] and node['fromText'] in ['N','1']:
+          if node['to'] == relationship[1] :
+            attr_nm_relation.append((node['from'], node['fromText']))
+          if node['from'] == relationship[1] :
+            attr_nm_relation.append((node['to'], node['toText']))
+    return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
-projectName = "test_sql"
+  def getRelations11(self, diagram, relationship):
+    """
+    Función para obtener las relaciones 1 a 1 del diagrama entidad relación
+    """
+    attr_nm_relation = []
+    diagramDict = diagram
+    for node in diagramDict['linkDataArray']:
+      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
+        if node['toText'] == '1' and node['fromText'] == '1':
+          if node['to'] == relationship[1] :
+            attr_nm_relation.append((node['from'], node['fromText']))
+          if node['from'] == relationship[1] :
+            attr_nm_relation.append((node['to'], node['toText']))
+    return {relationship :  attr_nm_relation} if attr_nm_relation else None
 
-entities = getEntities(diagram)
-attrs = getAttrs(diagram)
-entitiesWithAttrs = [getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
-entitiesWithAttrs_validation = [validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
-relations = getRelationships(diagram)
-relations_NM_to_table = [getRelationsNM(diagram, relationship ) for relationship in relations]
-relations_1M = [getRelations1M(diagram, relationship ) for relationship in relations]
-relations_1M = [ i for i in relations_1M if i]
-setForeingKey(relations_1M[0])
-relations_1_1 = [getRelations11(diagram, relationship ) for relationship in relations]
-relations_1_1 = [i for i in relations_1_1 if i]
-print(relations_1_1)
-setForeingKey11(relations_1_1[0])
-relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
-relations_NM_to_table_with_attr = [getAttrsNMRelation(entitiesWithAttrs, relation_nm) for  relation_nm in relations_NM_to_table]
+  def setForeingKey(self, relations_1N_cardinality, entitiesWithAttrs):
 
-script_sql_sentences = getSentencesSQL(projectName, entitiesWithAttrs, relations_NM_to_table_with_attr)
+    table_ref = ""
+    attr_fk = ""
+    table_fk = ""
+    for key in next(iter(relations_1N_cardinality.values())):
+      attributes_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
+      if key[1] == '1':
+        pk_ref = next(iter(attributes_entity[0].values()))['primary_key'][0]
+        ref_table = next(iter(attributes_entity[0]))
+        table_ref = ref_table[0]
+        attr_fk = f"{pk_ref[0]}_{ref_table[0].lower()}"
+      if key[1] == 'N':
+        table_fk = [ entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
+        ref_table = next(iter(table_fk[0]))
+        table_fk = attributes_entity
+    # obtenemos el indice del diccionario de la entidad a modificar
+    index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
+    # agregamos el atributo a la lista de atributos de la entidad
+    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+    # agregamos el atributo a las llaves foraneas de la entidad
+    next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
+    
+    return None
 
-print("*"*20)
-print(script_sql_sentences)
+  def setForeingKey11(self, relations_1_1_cardinality, entitiesWithAttrs):
+
+    l_table, r_table = next(iter(relations_1_1_cardinality.values()))
+    print(f"LT {l_table} RL {r_table}")
+    # obtenemos las entidades de la relacion con sus atributos
+    attributes_l_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == l_table[0]]
+    attributes_r_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == r_table[0]]
+    ## obtener la llave primararia de la tabla 'izquierda'
+    pk_l_entity = next(iter(attributes_l_entity[0].values()))['primary_key'][0]
+    #formamos la llave forarea con la pk de la tabal izquierda concatenando el nombre de la entidad
+    ref_table = next(iter(attributes_l_entity[0]))
+    attr_fk = f"{pk_l_entity[0]}_{ref_table[0].lower()}"
+
+    # recuperamos el indice de la tabla 'R' a modificar 
+    index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == attributes_r_entity[0])
+
+    #Agregamos el atributo a la tabla R
+    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+    # agregamos el atributo a las llaves foraneas de la entidad de la tabla R
+    next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
+
+  def validateKeyAttibute(self, entity_with_attrs):
+    attrs = next(iter(entity_with_attrs.values())) # get attributes in entinty_with_attr dictionary
+    primary_key = [attr for attr in attrs if attr[2] == 'keyAttribute']
+    
+    return primary_key
+
+  def greeting(self):
+    print(type(self.diagram))
+    return f"Saludos desde la clase relacional.py {self.greet}"
+
+  def convertToSQLSenteneces(self, diagram):
+    
+    entities = self.getEntities(diagram)
+    attrs = self.getAttrs(diagram)
+    entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+    entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
+    relations = self.getRelationships(diagram)
+    relations_NM_to_table = [self.getRelationsNM(diagram, relationship ) for relationship in relations]
+    relations_1M = [self.getRelations1M(diagram, relationship ) for relationship in relations]
+    relations_1M = [ i for i in relations_1M if i]
+    self.setForeingKey(relations_1M[0], entitiesWithAttrs)
+    relations_1_1 = [self.getRelations11(diagram, relationship ) for relationship in relations]
+    relations_1_1 = [i for i in relations_1_1 if i]
+    self.setForeingKey11(relations_1_1[0], entitiesWithAttrs)
+    relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
+    relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
+
+    return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
+
+
+  def getAttrsNMRelation(self, diagram, entitiesWithAttrs, relation_nm, attrs):
+    attr_nm_relation = []
+    primary_keys = []
+    foreing_keys = []
+    for entity_attrs in entitiesWithAttrs:
+      if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
+        primary_key = next(iter(entity_attrs.values()))['primary_key'][0]
+        ref_table = next(iter(entity_attrs))
+        primary_keys.append(f"{primary_key[0]}_{ref_table[0].lower()}")
+        foreing_keys.append(ref_table[0])
+    attr_nm_relation = [self.getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
+    return {next(iter(relation_nm)) : 
+              {
+                "primary_keys":primary_keys,
+                "foreing_keys" : foreing_keys,
+                "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']
+              }
+            }
