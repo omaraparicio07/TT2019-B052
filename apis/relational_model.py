@@ -28,9 +28,12 @@ class Relatioral(Resource):
     """
     logging.info("Empezando la tranformación del diagrama er a sentencias SQL")
     diagram= api.payload['diagram']
+    email= api.payload['email'].split("@")[0]
     r = Relational(diagram, "Ya lleguee!!!!")
     test = r.convertToSQLSenteneces(diagram)
-    print(test)
+    script_sql_out = open(f"script_sql_{email}.sql", "w")
+    script_sql_out.write(test)
+    script_sql_out.close()
     
     return r.greeting()
 
