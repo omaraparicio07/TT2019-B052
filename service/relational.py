@@ -257,8 +257,6 @@ class Relational():
       # get name table in dict with next(iter(table))
       script_sentences += self.build_table_sentence(table)
 
-    script_sentences +="------- Table Relationships N:M -------------"
-
     for table in relations_NM_to_table_with_attr:
       # get name table in dict with next(iter(table))
       script_sentences += self.build_table_nm_sentence(table)
@@ -269,10 +267,8 @@ class Relational():
 
     table_template = """
   ---------------- CREATE TABLE ----------------
-  -- step 1. drop table if exists
-  DROP TABLE IF EXISTS {table_name} CASCADE;
-  -- step 2. create table 
-  CREATE TABLE IF NOT EXISTS {table_name} (
+  DROP TABLE IF EXISTS `{table_name}`;
+  CREATE TABLE IF NOT EXISTS `{table_name}` (
   {attrs_sentences},
   {primary_key}
   {foreing_keys}
@@ -299,8 +295,8 @@ class Relational():
 
     table_template = """
   ---------------- CREATE TABLE NM relationship----------------
-  DROP TABLE IF EXISTS {table_name} CASCADE;
-  CREATE TABLE IF NOT EXISTS {table_name} (
+  DROP TABLE IF EXISTS `{table_name}`;
+  CREATE TABLE IF NOT EXISTS `{table_name}` (
   {attrs_sentences},
   {primary_key}
   {foreing_keys}
@@ -319,7 +315,7 @@ class Relational():
       if attr_relation_list:
         attr_by_table += ",\n"
         attr_by_table += self.build_columns_sentences(attr_relation_list)
-      primary_key = "PRIMARY KEY ({})".format(",".join([attr for attr in attr_primarykey_list]))
+      primary_key = "PRIMARY KEY ({})".format(",".join([f"`{attr}`" for attr in attr_primarykey_list]))
       if foreingKeys_list:
         primary_key += ","
         foreing_keys = self.buildForeingKeys(attr_primarykey_list)
@@ -328,44 +324,51 @@ class Relational():
 
   def buildPrimaryKey(self, attr_list):
     primary_key_sentence = "PRIMARY KEY ({})"
-    primary_key = [attr[0] for attr in attr_list if attr[2] == 'keyAttribute']
+    primary_key = [f"`{attr[0]}`" for attr in attr_list if attr[2] == 'keyAttribute']
     return primary_key_sentence.format(",".join(primary_key))
 
   def buildForeingKeys(self, attr_list):
     foreing_key_sentence = "FOREIGN KEY ({attr_name}) REFERENCES {ref_table_name} ({attr_ref_table})"
     fk_list = []
     for attr in attr_list:
-      attr_ref_table, ref_table = attr.split("_")
+      attr_ref_table, ref_table = attr.rsplit("_",1)
       fk_list.append(f"FOREIGN KEY ({attr}) REFERENCES {ref_table} ({attr_ref_table})")
     return ",\n".join(fk_list)
 
   def build_columns_sentences(self, attr_list):
 
-    column_template= "{} varchar(255) NOT NULL DEFAULT ''"
+    column_template= "{name} {dt}{dt_s} {not_null} {auto_increment}"
     columns_script = []
     for column in attr_list:
-      attr_name = column[0].replace(" ", "_")
-      columns_script.append(column_template.format(attr_name))
+      attrName = column[0].replace(" ", "_")
+      dataType = column[3]
+      dataSize = column[4]
+      notNull = column[5]
+      autoIncrement = column[6]
+      columns_script.append(column_template.format(name=f"`{attrName}`", dt=dataType, dt_s=f"({dataSize})", not_null=notNull, auto_increment=autoIncrement).rstrip())
 
     return ",\n".join(columns_script)
 
   def build_columns_nm(self, attr_list):
 
-    column_template= "{} varchar(255) NOT NULL DEFAULT ''"
+    column_template= "{name} {dt}{dt_s} {not_null} {auto_increment}"
     columns_script = []
     for column in attr_list:
-      attr_name = column.replace(" ", "_")
-      columns_script.append(column_template.format(attr_name))
+      attr_name = column[0].replace(" ", "_")
+      dataType = column[3]
+      dataSize = column[4]
+      notNull = column[5]
+      autoIncrement = column[6]
+      columns_script.append(column_template.format(name=f"`{attrName}`", dt=dataType, dt_s=f"({dataSize})", not_null=notNull, auto_increment=autoIncrement).rstrip())
 
     return ",\n".join(columns_script)
 
   def getEntities(self, diagram):
     entities = []
-    print(f"las keys del obj diagram {diagram.keys()}")
     for node in diagram['nodeDataArray']:
       if node['type'] == 'entity':
         entities.append(
-          (node['text'], node['key'])
+          (node['text'].replace(" ", "_"), node['key'])
           )
     return entities
 
@@ -374,8 +377,16 @@ class Relational():
     for node in diagram['nodeDataArray']:
       if node['type'] in ['atribute', 'atributeDerived', 'keyAttribute', 'atributeComposite']:
         attrs.append(
-          (node['text'], node['key'], node['type'])
+          (
+            node['text'].replace(" ", "_"),
+            node['key'],
+            node['type'],
+            node['dataType'],
+            node['dataSize'] if 'dataSize' in node else 0,
+            'NOT NULL' if 'notNull' in node else '',
+            'AUTO_INCREMENT' if 'autoIncrement' in node else '',
           )
+        ) 
     return attrs
 
   def getRelationships(self, diagram):
@@ -383,7 +394,7 @@ class Relational():
     for node in diagram['nodeDataArray']:
       if node['type'] in ['relation']:
         relationships.append(
-          (node['text'], node['key'])
+          (node['text'].replace(" ", "_"), node['key'])
           )
     return relationships
 
@@ -438,7 +449,7 @@ class Relational():
             attr_nm_relation.append((node['from'], node['cardinality']))
           if node['from'] == relationship[1] :
             attr_nm_relation.append((node['to'], node['cardinality']))
-    return {relationship :  attr_nm_relation} if len(attr_nm_relation) == 2 else None
+    return {relationship :  attr_nm_relation} if len(attr_nm_relation) == 2 and attr_nm_relation[0][1] != attr_nm_relation[1][1] else None
 
   def getRelations11(self, diagram, relationship):
     """
@@ -460,6 +471,7 @@ class Relational():
     table_ref = ""
     attr_fk = ""
     table_fk = ""
+    pk_ref = ()
     for key in next(iter(relations_1N_cardinality.values())):
       attributes_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
       if key[1] == '1':
@@ -467,6 +479,9 @@ class Relational():
         ref_table = next(iter(attributes_entity[0]))
         table_ref = ref_table[0]
         attr_fk = f"{pk_ref[0]}_{ref_table[0].lower()}"
+        attr_tuple = list(pk_ref)
+        attr_tuple[0] = attr_fk
+        pk_ref = tuple(attr_tuple)
       if key[1] == 'N':
         table_fk = [ entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
         ref_table = next(iter(table_fk[0]))
@@ -474,7 +489,8 @@ class Relational():
     # obtenemos el indice del diccionario de la entidad a modificar
     index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
     # agregamos el atributo a la lista de atributos de la entidad
-    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+    # next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute', pk_ref[3], pk_ref[4], pk_ref[5], pk_ref[6]))
+    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_ref)
     # agregamos el atributo a las llaves foraneas de la entidad
     next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
     
@@ -483,7 +499,6 @@ class Relational():
   def setForeingKey11(self, relations_1_1_cardinality, entitiesWithAttrs):
 
     l_table, r_table = next(iter(relations_1_1_cardinality.values()))
-    print(f"LT {l_table} RL {r_table}")
     # obtenemos las entidades de la relacion con sus atributos
     attributes_l_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == l_table[0]]
     attributes_r_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == r_table[0]]
@@ -492,12 +507,16 @@ class Relational():
     #formamos la llave forarea con la pk de la tabal izquierda concatenando el nombre de la entidad
     ref_table = next(iter(attributes_l_entity[0]))
     attr_fk = f"{pk_l_entity[0]}_{ref_table[0].lower()}"
+    pk_l = list(pk_l_entity)
+    pk_l[0] = attr_fk
+    pk_l_entity = tuple(pk_l)
 
     # recuperamos el indice de la tabla 'R' a modificar 
     index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == attributes_r_entity[0])
 
     #Agregamos el atributo a la tabla R
-    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute'))
+    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute', pk_l[3], pk_l[4], pk_l[5], pk_l[6]))
+    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_l)
     # agregamos el atributo a las llaves foraneas de la entidad de la tabla R
     next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
 
@@ -543,7 +562,12 @@ class Relational():
     relations_1_1 = [i for i in relations_1_1 if i]
     relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
     relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
-    if relations_1M : self.setForeingKey(relations_1M[0], entitiesWithAttrs)
-    if relations_1_1 : self.setForeingKey11(relations_1_1[0], entitiesWithAttrs)
+
+    if relations_1M :
+      for r in relations_1M:
+        self.setForeingKey(r, entitiesWithAttrs) 
+    if relations_1_1 :
+      for r in relations_1_1:
+        self.setForeingKey11(r, entitiesWithAttrs)
 
     return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
