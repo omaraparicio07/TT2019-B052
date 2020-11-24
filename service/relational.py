@@ -399,7 +399,6 @@ class Relational():
 
   def getEntityWithAtributes(self, diagram, entity, attrs):
     diagramDict = diagram
-    print(f" que paso {diagramDict['linkDataArray']}")
     entityWithAttr = []
     for node in diagramDict['linkDataArray']:  #pattern matching from & to
       if node['from'] == entity[1]:
@@ -418,13 +417,13 @@ class Relational():
     attr_nm_relation = []
     diagramDict = diagram
     for node in diagramDict['linkDataArray']:
-      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-        if node['toText'] in ['N','M'] and node['fromText'] in ['N','M']:
+      if ('cardinality' in node ) and (node['cardinality']):
+        if node['cardinality'] in ['N','M']:
           if node['to'] == relationship[1]:
             attr_nm_relation.append(node['from'])
           if node['from'] == relationship[1]:
             attr_nm_relation.append(node['to'])
-    return {relationship :  attr_nm_relation} if attr_nm_relation else None
+    return {relationship :  attr_nm_relation} if len(attr_nm_relation) == 2 else None
 
   def getRelations1M(self, diagram, relationship):
     """
@@ -433,13 +432,13 @@ class Relational():
     attr_nm_relation = []
     diagramDict = diagram
     for node in diagramDict['linkDataArray']:
-      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-        if node['toText'] in ['1','N'] and node['fromText'] in ['N','1']:
+      if ('cardinality' in node ) and (node['cardinality']):
+        if node['cardinality'] in ['1','N']:
           if node['to'] == relationship[1] :
-            attr_nm_relation.append((node['from'], node['fromText']))
+            attr_nm_relation.append((node['from'], node['cardinality']))
           if node['from'] == relationship[1] :
-            attr_nm_relation.append((node['to'], node['toText']))
-    return {relationship :  attr_nm_relation} if attr_nm_relation else None
+            attr_nm_relation.append((node['to'], node['cardinality']))
+    return {relationship :  attr_nm_relation} if len(attr_nm_relation) == 2 else None
 
   def getRelations11(self, diagram, relationship):
     """
@@ -448,13 +447,13 @@ class Relational():
     attr_nm_relation = []
     diagramDict = diagram
     for node in diagramDict['linkDataArray']:
-      if ('toText' in node and 'fromText' in node) and (node['toText'] and node['fromText']):
-        if node['toText'] == '1' and node['fromText'] == '1':
+      if ('cardinality' in node ) and (node['cardinality']):
+        if node['cardinality'] == '1':
           if node['to'] == relationship[1] :
-            attr_nm_relation.append((node['from'], node['fromText']))
+            attr_nm_relation.append((node['from'], node['cardinality']))
           if node['from'] == relationship[1] :
-            attr_nm_relation.append((node['to'], node['toText']))
-    return {relationship :  attr_nm_relation} if attr_nm_relation else None
+            attr_nm_relation.append((node['to'], node['cardinality']))
+    return {relationship :  attr_nm_relation} if len(attr_nm_relation) == 2 else None
 
   def setForeingKey(self, relations_1N_cardinality, entitiesWithAttrs):
 
@@ -509,28 +508,7 @@ class Relational():
     return primary_key
 
   def greeting(self):
-    print(type(self.diagram))
     return f"Saludos desde la clase relacional.py {self.greet}"
-
-  def convertToSQLSenteneces(self, diagram):
-    
-    entities = self.getEntities(diagram)
-    attrs = self.getAttrs(diagram)
-    entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
-    entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
-    relations = self.getRelationships(diagram)
-    relations_NM_to_table = [self.getRelationsNM(diagram, relationship ) for relationship in relations]
-    relations_1M = [self.getRelations1M(diagram, relationship ) for relationship in relations]
-    relations_1M = [ i for i in relations_1M if i]
-    self.setForeingKey(relations_1M[0], entitiesWithAttrs)
-    relations_1_1 = [self.getRelations11(diagram, relationship ) for relationship in relations]
-    relations_1_1 = [i for i in relations_1_1 if i]
-    self.setForeingKey11(relations_1_1[0], entitiesWithAttrs)
-    relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
-    relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
-
-    return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
-
 
   def getAttrsNMRelation(self, diagram, entitiesWithAttrs, relation_nm, attrs):
     attr_nm_relation = []
@@ -550,3 +528,22 @@ class Relational():
                 "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']
               }
             }
+
+  def convertToSQLSenteneces(self, diagram):
+    
+    entities = self.getEntities(diagram)
+    attrs = self.getAttrs(diagram)
+    entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+    entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
+    relations = self.getRelationships(diagram)
+    relations_NM_to_table = [self.getRelationsNM(diagram, relationship ) for relationship in relations]
+    relations_1M = [self.getRelations1M(diagram, relationship ) for relationship in relations]
+    relations_1M = [ i for i in relations_1M if i]
+    relations_1_1 = [self.getRelations11(diagram, relationship ) for relationship in relations]
+    relations_1_1 = [i for i in relations_1_1 if i]
+    relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
+    relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
+    if relations_1M : self.setForeingKey(relations_1M[0], entitiesWithAttrs)
+    if relations_1_1 : self.setForeingKey11(relations_1_1[0], entitiesWithAttrs)
+
+    return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
