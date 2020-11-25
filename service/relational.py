@@ -337,3 +337,22 @@ class Relational():
         self.setForeingKey11(r, entitiesWithAttrs)
 
     return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
+
+  def validateDiagramStructure(self, diagram):
+    errors = {}
+    general_errors = self.generalValidations(diagram)
+    if general_errors : errors['generalErrors'] = general_errors 
+    return errors
+
+  def generalValidations(self, diagram):
+    unary_links = self.getUniryLink(diagram['linkDataArray'])
+    return {'unary_links': unary_links} if unary_links else {}
+  
+  def getUniryLink(self, link_data_array):
+    unary_links_list = []
+    for link in link_data_array:
+      if not all (k in link for k in ['from', 'to']) :
+        unary_links_list.append(f"enlace sin conexión {str(link)}")
+        
+    return unary_links_list
+        

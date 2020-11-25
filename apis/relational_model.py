@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, json
 from flask_restplus import Namespace, Resource, fields
 import logging
 from service.relational import Relational
@@ -46,13 +46,14 @@ class ValidateDiagram(Resource):
   @api.response(200, "Diagrama valido estructuralmente")
   @api.response(401, "No autorizado")
   @api.response(403, "Diagrama no entrado en la petición")
+  @api.response(406, "Diagrama no valido")
   @api.response(500, "Error en el servidor")
   def post(self):
     """
     Método para validar la estructura del diagrama ER con los siguientes criterios:
      General :
       - No pueden existir elmentos sin conexión
-      - No pueden existir enlacen sin conexión
+      - No pueden existir enlacen sin conexión ✅
 
     Entidades :
       - Debe tener al menos un atributo
@@ -74,4 +75,12 @@ class ValidateDiagram(Resource):
       - Una relación puede ser unaria
       - No se permiten relaciones ternarias o de grado n
     """
-    return 201
+    logging.info("inicando la validación del diagrama")
+    diagram = api.payload['diagram']
+    validate_diagram = Relational(diagram, "Hi!")
+    errors = validate_diagram.validateDiagramStructure(diagram)
+    if errors:
+      logging.warn("diagrama con errores generales")
+      return errors, 406
+    else:
+      return "Diagrama valido",200
