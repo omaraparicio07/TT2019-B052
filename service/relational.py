@@ -345,14 +345,31 @@ class Relational():
     return errors
 
   def generalValidations(self, diagram):
+    general_errors = {}
     unary_links = self.getUniryLink(diagram['linkDataArray'])
-    return {'unary_links': unary_links} if unary_links else {}
+    unconnected_items = self.getUnconnectedItems(diagram)
+    if unary_links: general_errors['unary_links'] = unary_links
+    if unconnected_items: general_errors['unconnected_items'] = unconnected_items
+    return general_errors
   
   def getUniryLink(self, link_data_array):
     unary_links_list = []
     for link in link_data_array:
       if not all (k in link for k in ['from', 'to']) :
-        unary_links_list.append(f"enlace sin conexión {str(link)}")
+        unary_links_list.append(link)
         
     return unary_links_list
+  
+  def getUnconnectedItems(self, diagram):
+    unconnected_list = []
+    keys_list = [ item['key'] for item in diagram['nodeDataArray']]
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # remove unary links to find unconnected items
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+
+    for key in keys_list:
+      item_with_conexions = [item for item in links_without_unary_link if item['from'] == key or item['to'] == key ]
+      if not item_with_conexions: unconnected_list.append(key)
+
+    return unconnected_list 
         

@@ -52,7 +52,7 @@ class ValidateDiagram(Resource):
     """
     Método para validar la estructura del diagrama ER con los siguientes criterios:
      General :
-      - No pueden existir elmentos sin conexión
+      - No pueden existir elmentos sin conexión ✅
       - No pueden existir enlacen sin conexión ✅
 
     Entidades :
@@ -83,4 +83,5 @@ class ValidateDiagram(Resource):
       logging.warn("diagrama con errores generales")
       return errors, 406
     else:
+      logging.info("diagrama valido en estructura")
       return "Diagrama valido",200
