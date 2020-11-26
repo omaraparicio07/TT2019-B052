@@ -177,7 +177,10 @@ class Relational():
   def getEntityWithAtributes(self, diagram, entity, attrs):
     diagramDict = diagram
     entityWithAttr = []
-    for node in diagramDict['linkDataArray']:  #pattern matching from & to
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # remove unary links to find unconnected items
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    for node in links_without_unary_link:  #pattern matching from & to
       if node['from'] == entity[1]:
         for attr in attrs:
           if attr[1] == node['to']:
@@ -193,7 +196,10 @@ class Relational():
   def getRelationsNM(self, diagram, relationship):
     attr_nm_relation = []
     diagramDict = diagram
-    for node in diagramDict['linkDataArray']:
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # remove unary links to find unconnected items
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    for node in links_without_unary_link:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] in ['N','M']:
           if node['to'] == relationship[1]:
@@ -208,6 +214,9 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # remove unary links to find unconnected items
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
     for node in diagramDict['linkDataArray']:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] in ['1','N']:
@@ -223,7 +232,10 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
-    for node in diagramDict['linkDataArray']:
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # remove unary links to find unconnected items
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    for node in links_without_unary_link:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] == '1':
           if node['to'] == relationship[1] :
@@ -341,7 +353,9 @@ class Relational():
   def validateDiagramStructure(self, diagram):
     errors = {}
     general_errors = self.generalValidations(diagram)
+    entities_errors = self.entitiesValidations(diagram)
     if general_errors : errors['generalErrors'] = general_errors 
+    if entities_errors : errors['entities_errors'] = entities_errors 
     return errors
 
   def generalValidations(self, diagram):
@@ -351,7 +365,16 @@ class Relational():
     if unary_links: general_errors['unary_links'] = unary_links
     if unconnected_items: general_errors['unconnected_items'] = unconnected_items
     return general_errors
-  
+
+  def entitiesValidations(self, diagram):
+    entities_errors = {}
+    entities = self.getEntities(diagram)
+    attrs = self.getAttrs(diagram)
+    entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+    entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
+
+    return entities_errors
+
   def getUniryLink(self, link_data_array):
     unary_links_list = []
     for link in link_data_array:
@@ -373,3 +396,19 @@ class Relational():
 
     return unconnected_list 
         
+  def getEntitiesWithoutAttrsOrPk(self, entities, attrs, entities_with_attrs):
+
+    entities_without_attr = []
+    entities_without_pk = []
+    entities_errors = {}
+    for entity_with_attr in entities_with_attrs:
+      entities_attrs = next(iter(entity_with_attr.values()))
+      if not entities_attrs['attributes']:
+        entities_without_attr.append(next(iter(entity_with_attr.keys())))
+      if not entities_attrs['primary_key']:
+        entities_without_pk.append(next(iter(entity_with_attr.keys())))
+    
+    if entities_without_attr: entities_errors['entities_without_attr'] = entities_without_attr
+    if entities_without_pk: entities_errors['entities_without_pk'] = entities_without_pk  
+
+    return entities_errors

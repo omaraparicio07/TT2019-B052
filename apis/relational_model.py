@@ -56,11 +56,11 @@ class ValidateDiagram(Resource):
       - No pueden existir enlacen sin conexión ✅
 
     Entidades :
-      - Debe tener al menos un atributo
-      - Debe tener al menos un atributo clave
+      - Debe tener al menos un atributo ✅
+      - Debe tener al menos un atributo clave ✅
       - La clave primaria puede ser simple o compuesta(tener mas de un atributo clave)
       - La clave primaria no es una una clave foránea
-      - La clave primaria debe ser un atributo asociado a la entidad
+      - La clave primaria debe ser un atributo asociado a la entidad ✅
       - Dos entidades solo pueden estar conecatadas mediante una relación
 
     Atributos :
