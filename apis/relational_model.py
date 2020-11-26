@@ -58,10 +58,10 @@ class ValidateDiagram(Resource):
     Entidades :
       - Debe tener al menos un atributo ✅
       - Debe tener al menos un atributo clave ✅
-      - La clave primaria puede ser simple o compuesta(tener mas de un atributo clave)
-      - La clave primaria no es una una clave foránea
+      - La clave primaria puede ser simple o compuesta(tener mas de un atributo clave) ✅
+      - La clave primaria no es una una clave foránea ☑️
       - La clave primaria debe ser un atributo asociado a la entidad ✅
-      - Dos entidades solo pueden estar conecatadas mediante una relación
+      - Dos entidades solo pueden conectarse entre si mediante una relación ✅
 
     Atributos :
       - Solo se puede asociar a un unico atributo o a una entidad

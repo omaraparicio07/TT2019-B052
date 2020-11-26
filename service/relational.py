@@ -372,6 +372,9 @@ class Relational():
     attrs = self.getAttrs(diagram)
     entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
+    connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
+
+    if connection_between_entities: entities_errors['entities_connections'] = connection_between_entities
 
     return entities_errors
 
@@ -412,3 +415,15 @@ class Relational():
     if entities_without_pk: entities_errors['entities_without_pk'] = entities_without_pk  
 
     return entities_errors
+
+  def getConnectionsBetweenEntitites(self, diagram):
+    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    con_bet_entities = []
+    for link in links_without_unary_link:
+      if link['from'] in entities_keys_list and link['to'] in entities_keys_list :
+        con_bet_entities.append(f"conn between entity {link['from']} and {link['to']}")
+
+    return con_bet_entities
+
