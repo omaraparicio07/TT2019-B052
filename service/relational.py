@@ -447,7 +447,7 @@ class Relational():
 
   def attrsValidations(self, diagram):
     errors_attr = {}
-    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
+    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity', 'relation', 'weakRelation'] ]
     u_links = self.getUniryLink(diagram['linkDataArray'])
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
     attrs = self.getAttrs(diagram)
