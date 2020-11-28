@@ -164,14 +164,14 @@ class Relational():
           )
     return relationships
 
-  def validateOnlyBinarieRelationship(self, relationKey, diagram):
+  def validateOnlyBinarieRelationship(self, relationKey, links, entities):
     count = 0
-    for node in diagram['linkDataArray']:
+    for node in links:
       if node['from'] == relationKey and [entity for entity in entities if entity[1] == node['to']]:
         count += 1
       if node['to'] == relationKey and [entity for entity in entities if entity[1] == node['from']]:
         count += 1
-    return True if count == 2 else False
+    return False if count == 2 else True
 
 
   def getEntityWithAtributes(self, diagram, entity, attrs):
@@ -355,8 +355,11 @@ class Relational():
     general_errors = self.generalValidations(diagram)
     entities_errors = self.entitiesValidations(diagram)
     attrs_errors = self.attrsValidations(diagram)
-    if general_errors : errors['generalErrors'] = general_errors 
-    if entities_errors : errors['entities_errors'] = entities_errors 
+    relations_errors = self.realtionsValidations(diagram)
+    if general_errors : errors['generalErrors'] = general_errors
+    if entities_errors : errors['entities_errors'] = entities_errors
+    if attrs_errors : errors['attrs_errors'] = attrs_errors
+    if relations_errors : errors['relations_errors'] = relations_errors
     return errors
 
   def generalValidations(self, diagram):
@@ -424,7 +427,9 @@ class Relational():
     conn_bt_entities = []
     for link in links_without_unary_link:
       if link['from'] in entities_keys_list and link['to'] in entities_keys_list :
-        conn_bt_entities.append(f"conn between entity {link['from']} and {link['to']}")
+        entity_a = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['from'] ]
+        entity_b = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['to'] ]
+        conn_bt_entities.append(f"{entity_a[0]}-{entity_b[0]}")
 
     return conn_bt_entities
 
@@ -436,14 +441,11 @@ class Relational():
     attrs = self.getAttrs(diagram)
     # atributos conectados a las de un elemento(excepto si es del tipo compuesto)
     attr_multi_conn = [attr[0] for attr in attrs if self.getAttrMultiConnections(attr, links_without_unary_link) ]
-    attrs_connect_only_entities  = [ attr for attr in attrs if attr[2] != 'attribute']
     # atributos compuesto o derivados conectados a otro elemento que no sea una entidad
     attrs_no_conn_entity = [attr[0] for attr in attrs if self.getAttrsNotEntityConnected(attr, links_without_unary_link, entities_keys_list) ]
 
     if attr_multi_conn : errors_attr['attr_multi_conn']=attr_multi_conn 
     if attrs_no_conn_entity : errors_attr['attrs_no_conn_entity']=attrs_no_conn_entity
-
-    print(f" erro attrs { errors_attr }")
 
     return errors_attr
 
@@ -466,3 +468,14 @@ class Relational():
         break;
     return entity_connected
 
+  def realtionsValidations(self, diagram):
+    relations = self.getRelationships(diagram)
+    entities = self.getEntities(diagram)
+    errors_relations = {}
+    u_links = self.getUniryLink(diagram['linkDataArray'])
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    relation_no_binary = [ relation[0] for relation in relations if self.validateOnlyBinarieRelationship(relation[1], links_without_unary_link, entities)]
+
+    if relation_no_binary: errors_relations['relation_no_binary'] = relation_no_binary
+
+    return errors_relations

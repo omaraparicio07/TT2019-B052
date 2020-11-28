@@ -66,14 +66,14 @@ class ValidateDiagram(Resource):
     Atributos :
       - Solo se puede asociar a un unico atributo o a una entidad ✅
       - Puede ser del tipo compuesto, derivado, multivalor, clave ✅
-      - No puede conectarse a una relación
+      - No puede conectarse a una relación ☑️
       - Los atributos compuestos y derivados solo pueden estar asociados a una entidad ✅
 
     Relaciones :
       - Solo pueden existir entre entidades ☑️
       - El grado máximo de participación es dos 
       - Una relación puede ser unaria ✅
-      - No se permiten relaciones ternarias o de grado n 
+      - No se permiten relaciones ternarias o de grado n ✅
     """
     logging.info("inicando la validación del diagrama")
     diagram = api.payload['diagram']
