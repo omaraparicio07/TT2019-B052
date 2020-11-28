@@ -81,10 +81,10 @@ class Relational():
       if attr_relation_list:
         attr_by_table += ",\n"
         attr_by_table += self.build_columns_sentences(attr_relation_list)
-      primary_key = "PRIMARY KEY ({})".format(",".join([f"`{attr}`" for attr in attr_primarykey_list]))
+      primary_key = "PRIMARY KEY ({})".format(",".join([f"`{attr[0]}`" for attr in attr_primarykey_list]))
       if foreingKeys_list:
         primary_key += ","
-        foreing_keys = self.buildForeingKeys(attr_primarykey_list)
+        foreing_keys = self.buildForeingKeysNM(attr_primarykey_list)
 
     return table_template.format(table_name=table_name, attrs_sentences=attr_by_table, primary_key=primary_key, foreing_keys=foreing_keys)
 
@@ -99,6 +99,14 @@ class Relational():
     for attr in attr_list:
       attr_ref_table, ref_table = attr.rsplit("_",1)
       fk_list.append(f"FOREIGN KEY ({attr}) REFERENCES {ref_table} ({attr_ref_table})")
+    return ",\n".join(fk_list)
+  
+  def buildForeingKeysNM(self, attr_list):
+    foreing_key_sentence = "FOREIGN KEY ({attr_name}) REFERENCES {ref_table_name} ({attr_ref_table})"
+    fk_list = []
+    for attr in attr_list:
+      attr_ref_table, ref_table = attr[0].rsplit("_",1)
+      fk_list.append(f"FOREIGN KEY ({attr_ref_table}) REFERENCES {ref_table} ({attr_ref_table})")
     return ",\n".join(fk_list)
 
   def build_columns_sentences(self, attr_list):
@@ -125,7 +133,7 @@ class Relational():
       dataSize = column[4]
       notNull = column[5]
       autoIncrement = column[6]
-      columns_script.append(column_template.format(name=f"`{attrName}`", dt=dataType, dt_s=f"({dataSize})", not_null=notNull, auto_increment=autoIncrement).rstrip())
+      columns_script.append(column_template.format(name=f"`{attr_name}`", dt=dataType, dt_s=f"({dataSize})", not_null=notNull, auto_increment=autoIncrement).rstrip())
 
     return ",\n".join(columns_script)
 
@@ -315,8 +323,12 @@ class Relational():
       if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
         primary_key = next(iter(entity_attrs.values()))['primary_key'][0]
         ref_table = next(iter(entity_attrs))
-        primary_keys.append(f"{primary_key[0]}_{ref_table[0].lower()}")
-        foreing_keys.append(ref_table[0])
+        attr_fk = f"{primary_key[0]}_{ref_table[0].lower()}"
+        attr_tuple = list(primary_key)
+        attr_tuple[0] = attr_fk
+        primary_key = tuple(attr_tuple)
+        primary_keys.append(primary_key)
+        foreing_keys.append(attr_fk)
     attr_nm_relation = [self.getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
     return {next(iter(relation_nm)) : 
               {
