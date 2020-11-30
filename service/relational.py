@@ -4,6 +4,7 @@ class Relational():
   Clase que implementa la obtención de sentencias SQL a partir de un diagrama ER generado por
   el proyecto: https://github.com/martinez-acosta/TT-2019-B052.git
   """
+  unary_links = []
 
   def __init__(self,diagram, greet):
     self.diagram = diagram
@@ -185,9 +186,9 @@ class Relational():
   def getEntityWithAtributes(self, diagram, entity, attrs):
     diagramDict = diagram
     entityWithAttr = []
-    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:  #pattern matching from & to
       if node['from'] == entity[1]:
         for attr in attrs:
@@ -204,9 +205,9 @@ class Relational():
   def getRelationsNM(self, diagram, relationship):
     attr_nm_relation = []
     diagramDict = diagram
-    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] in ['N','M']:
@@ -222,9 +223,9 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
-    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in diagramDict['linkDataArray']:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] in ['1','N']:
@@ -240,9 +241,9 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
-    u_links = self.getUniryLink(diagram['linkDataArray'])
+    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:
       if ('cardinality' in node ) and (node['cardinality']):
         if node['cardinality'] == '1':
@@ -342,6 +343,7 @@ class Relational():
     
     entities = self.getEntities(diagram)
     attrs = self.getAttrs(diagram)
+    unary_links = self.getUniryLink(diagram['linkDataArray'])
     entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
     relations = self.getRelationships(diagram)
@@ -368,50 +370,48 @@ class Relational():
     entities_errors = self.entitiesValidations(diagram)
     attrs_errors = self.attrsValidations(diagram)
     relations_errors = self.realtionsValidations(diagram)
-    if general_errors : errors['generalErrors'] = general_errors
+    if general_errors : errors['general_errors'] = general_errors
     if entities_errors : errors['entities_errors'] = entities_errors
     if attrs_errors : errors['attrs_errors'] = attrs_errors
     if relations_errors : errors['relations_errors'] = relations_errors
     return errors
 
   def generalValidations(self, diagram):
-    general_errors = {}
+    general_errors = []
     unary_links = self.getUniryLink(diagram['linkDataArray'])
     unconnected_items = self.getUnconnectedItems(diagram)
-    if unary_links: general_errors['unary_links'] = unary_links
-    if unconnected_items: general_errors['unconnected_items'] = unconnected_items
+    if unary_links: general_errors += unary_links
+    if unconnected_items: general_errors += unconnected_items
     return general_errors
 
   def entitiesValidations(self, diagram):
-    entities_errors = {}
+    entities_errors = []
     entities = self.getEntities(diagram)
     attrs = self.getAttrs(diagram)
     entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
     connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
 
-    if connection_between_entities: entities_errors['entities_connections'] = connection_between_entities
-
-    return entities_errors
+    return entities_errors + connection_between_entities
 
   def getUniryLink(self, link_data_array):
     unary_links_list = []
     for link in link_data_array:
       if not all (k in link for k in ['from', 'to']) :
-        unary_links_list.append(link)
+        unary_links_list.append(f"Enlace sin conexión , {link}")
+        self.unary_links.append(link)
         
     return unary_links_list
   
   def getUnconnectedItems(self, diagram):
     unconnected_list = []
-    keys_list = [ item['key'] for item in diagram['nodeDataArray']]
-    u_links = self.getUniryLink(diagram['linkDataArray'])
+    keys_list = [ (item['key'], item['text']) for item in diagram['nodeDataArray']]
     # remove unary links to find unconnected items
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
 
     for key in keys_list:
-      item_with_conexions = [item for item in links_without_unary_link if item['from'] == key or item['to'] == key ]
-      if not item_with_conexions: unconnected_list.append(key)
+      item_with_conexions = [item for item in links_without_unary_link if item['from'] == key[0] or item['to'] == key[0] ]
+      if not item_with_conexions: unconnected_list.append(f"El elemento {key[1]} no cuenta con conexiones.")
 
     return unconnected_list 
         
@@ -419,47 +419,42 @@ class Relational():
 
     entities_without_attr = []
     entities_without_pk = []
-    entities_errors = {}
     for entity_with_attr in entities_with_attrs:
       entities_attrs = next(iter(entity_with_attr.values()))
       if not entities_attrs['attributes']:
-        entities_without_attr.append(next(iter(entity_with_attr.keys())))
+        entity_without_attrs = next(iter(entity_with_attr.keys()))
+        entities_without_attr.append(f"La entidad {entity_without_attrs[0]} no cuenta con atributos.")
       if not entities_attrs['primary_key']:
-        entities_without_pk.append(next(iter(entity_with_attr.keys())))
-    
-    if entities_without_attr: entities_errors['entities_without_attr'] = entities_without_attr
-    if entities_without_pk: entities_errors['entities_without_pk'] = entities_without_pk  
+        entity_without_pk = next(iter(entity_with_attr.keys()))
+        entities_without_pk.append(f"La entidad {entity_without_pk[0]} no cuenta con un atributo clave.")
 
-    return entities_errors
+    return entities_without_attr + entities_without_pk
 
   def getConnectionsBetweenEntitites(self, diagram):
-    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
-    u_links = self.getUniryLink(diagram['linkDataArray'])
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
     conn_bt_entities = []
+    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for link in links_without_unary_link:
       if link['from'] in entities_keys_list and link['to'] in entities_keys_list :
         entity_a = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['from'] ]
         entity_b = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['to'] ]
-        conn_bt_entities.append(f"{entity_a[0]}-{entity_b[0]}")
+        conn_bt_entities.append(f"No esta permitida la conexión entre entidades, {entity_a[0]} <-> {entity_b[0]}.")
 
     return conn_bt_entities
 
   def attrsValidations(self, diagram):
-    errors_attr = {}
+    errors_attr = []
     entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity', 'relation', 'weakRelation'] ]
-    u_links = self.getUniryLink(diagram['linkDataArray'])
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     attrs = self.getAttrs(diagram)
     # atributos conectados a las de un elemento(excepto si es del tipo compuesto)
     attr_multi_conn = [attr[0] for attr in attrs if self.getAttrMultiConnections(attr, links_without_unary_link) ]
+    attr_multi_conn = [f"El atributo {attr} se encuentra conectado a mas de una elemento." for attr in attr_multi_conn]
     # atributos compuesto o derivados conectados a otro elemento que no sea una entidad
     attrs_no_conn_entity = [attr[0] for attr in attrs if self.getAttrsNotEntityConnected(attr, links_without_unary_link, entities_keys_list) ]
+    attrs_no_conn_entity = [f"El atributo {attr} no se encuentra conectado a una entidad." for attr in attrs_no_conn_entity]
 
-    if attr_multi_conn : errors_attr['attr_multi_conn']=attr_multi_conn 
-    if attrs_no_conn_entity : errors_attr['attrs_no_conn_entity']=attrs_no_conn_entity
-
-    return errors_attr
+    return attr_multi_conn + attrs_no_conn_entity
 
   def getAttrMultiConnections(self, attr, links):
     count = 0
@@ -483,11 +478,8 @@ class Relational():
   def realtionsValidations(self, diagram):
     relations = self.getRelationships(diagram)
     entities = self.getEntities(diagram)
-    errors_relations = {}
-    u_links = self.getUniryLink(diagram['linkDataArray'])
-    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in u_links ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     relation_no_binary = [ relation[0] for relation in relations if self.validateOnlyBinarieRelationship(relation[1], links_without_unary_link, entities)]
+    relation_no_binary = [ f"La relación {relation} es de grado 3 o superior" for relation in relation_no_binary]
 
-    if relation_no_binary: errors_relations['relation_no_binary'] = relation_no_binary
-
-    return errors_relations
+    return relation_no_binary

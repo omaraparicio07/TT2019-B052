@@ -1,6 +1,7 @@
 from flask import current_app, json
 from flask_restplus import Namespace, Resource, fields
 import logging
+import json
 from service.relational import Relational
 
 logging.basicConfig(level=logging.DEBUG)
@@ -8,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG)
 api = Namespace('relational', description='Obtención de sentencias SQL')
 
 diagram = api.model('diagram', {
-  # 'diagram': fields.String(example="{}", required= True),
+  'diagram': fields.String(example="{}", required= True),
 })
 
 
@@ -42,7 +43,7 @@ class ValidateDiagram(Resource):
   """
   Clase para realizar la validación estructural del diagrama entidad relación
   """
-  @api.expect(diagram, validate=True)
+  @api.expect(diagram)
   @api.response(200, "Diagrama valido estructuralmente")
   @api.response(401, "No autorizado")
   @api.response(403, "Diagrama no entrado en la petición")
@@ -76,11 +77,11 @@ class ValidateDiagram(Resource):
       - No se permiten relaciones ternarias o de grado n ✅
     """
     logging.info("inicando la validación del diagrama")
-    diagram = api.payload['diagram']
+    diagram = json.loads(api.payload['diagram'])
     validate_diagram = Relational(diagram, "Hi!")
     errors = validate_diagram.validateDiagramStructure(diagram)
     if errors:
-      logging.warn("diagrama con errores generales")
+      logging.warn("diagrama no valido ")
       return errors, 406
     else:
       logging.info("diagrama valido en estructura")
