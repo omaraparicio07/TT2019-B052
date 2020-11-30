@@ -18,7 +18,7 @@ class Relatioral(Resource):
   """
   Clase para realizar la transformación del modelo er a sentencias SQL compatibles con mysql
   """
-  @api.expect(diagram, validate=True)
+  @api.expect(diagram)
   @api.response(200, "Tranformación correcta")
   @api.response(401, 'No autorizado')
   @api.response(403, "Diagrama no encontrado en la llamada")
@@ -28,15 +28,15 @@ class Relatioral(Resource):
     Método para realizar la tranformación a sentencias SQL
     """
     logging.info("Empezando la tranformación del diagrama er a sentencias SQL")
-    diagram= api.payload['diagram']
-    email= api.payload['email'].split("@")[0]
+    diagram= json.loads(api.payload['diagram'])
+    # email= api.payload['email'].split("@")[0]
     r = Relational(diagram, "Ya lleguee!!!!")
     test = r.convertToSQLSenteneces(diagram)
-    script_sql_out = open(f"script_sql_{email}.sql", "w")
-    script_sql_out.write(test)
-    script_sql_out.close()
+    # script_sql_out = open(f"script_sql_{email}.sql", "w")
+    # script_sql_out.write(test)
+    # script_sql_out.close()
     
-    return r.greeting()
+    return test
 
 @api.route("/validate")
 class ValidateDiagram(Resource):

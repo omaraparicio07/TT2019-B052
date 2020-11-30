@@ -39,7 +39,7 @@ class Relational():
   {attrs_sentences},
   {primary_key}
   {foreing_keys}
-  ) ENGINE=InnoDB;
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
   """
     attr_by_table = ""
     primarykey = next(iter(table_dict.values())).get('primary_key')
@@ -67,7 +67,7 @@ class Relational():
   {attrs_sentences},
   {primary_key}
   {foreing_keys}
-  ) ENGINE=InnoDB;
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
   """
     attr_by_table = ""
     attr_primarykey_list = next(iter(table_dict.values())).get('primary_keys')
