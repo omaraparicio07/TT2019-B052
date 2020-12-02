@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.DEBUG)
 api = Namespace('relational', description='Obtención de sentencias SQL')
 
 diagram = api.model('diagram', {
-  'diagram': fields.String(example="{}", required= True),
+  'db_name': fields.String(example="db_name.sql", required= True),
+  'diagram': fields.String(example="{}", required= True)
 })
 
 
@@ -29,12 +30,9 @@ class Relatioral(Resource):
     """
     logging.info("Empezando la tranformación del diagrama er a sentencias SQL")
     diagram= json.loads(api.payload['diagram'])
-    # email= api.payload['email'].split("@")[0]
+    db_name = api.payload['dbName']
     r = Relational(diagram, "Ya lleguee!!!!")
-    test = r.convertToSQLSenteneces(diagram)
-    # script_sql_out = open(f"script_sql_{email}.sql", "w")
-    # script_sql_out.write(test)
-    # script_sql_out.close()
+    test = r.convertToSQLSenteneces(diagram, db_name)
     
     return test
 

@@ -339,7 +339,7 @@ class Relational():
               }
             }
 
-  def convertToSQLSenteneces(self, diagram):
+  def convertToSQLSenteneces(self, diagram, db_name):
     
     entities = self.getEntities(diagram)
     attrs = self.getAttrs(diagram)
@@ -362,7 +362,7 @@ class Relational():
       for r in relations_1_1:
         self.setForeingKey11(r, entitiesWithAttrs)
 
-    return self.getSentencesSQL("prueba_sql", entitiesWithAttrs, relations_NM_to_table_with_attr)
+    return self.getSentencesSQL(db_name, entitiesWithAttrs, relations_NM_to_table_with_attr)
 
   def validateDiagramStructure(self, diagram):
     errors = {}
