@@ -1,8 +1,8 @@
 from flask import current_app, json
 from flask_restplus import Namespace, Resource, fields
+from service.relational import Relational
 import logging
 import json
-from service.relational import Relational
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -22,7 +22,7 @@ class Relatioral(Resource):
   @api.expect(diagram)
   @api.response(200, "Tranformación correcta")
   @api.response(401, 'No autorizado')
-  @api.response(403, "Diagrama no encontrado en la llamada")
+  @api.response(403, "Diagrama no encontrado en la petición")
   @api.response(500, "Error en el servidor")
   def post(self):
     """
@@ -30,9 +30,12 @@ class Relatioral(Resource):
     """
     logging.info("Empezando la tranformación del diagrama er a sentencias SQL")
     diagram= json.loads(api.payload['diagram'])
-    db_name = api.payload['dbName']
+    db_name = api.payload['dbName'] or "tt2019-B052"
     r = Relational(diagram, "Ya lleguee!!!!")
-    test = r.convertToSQLSenteneces(diagram, db_name)
+    if diagram['nodeDataArray']:
+      test = r.convertToSQLSenteneces(diagram, db_name)
+    else:
+      return api.abort(403, "El diagrama se encuentra vacío.")
     
     return test
 
@@ -77,7 +80,12 @@ class ValidateDiagram(Resource):
     logging.info("inicando la validación del diagrama")
     diagram = json.loads(api.payload['diagram'])
     validate_diagram = Relational(diagram, "Hi!")
-    errors = validate_diagram.validateDiagramStructure(diagram)
+    errors = {}
+    if diagram['nodeDataArray']:
+      errors = validate_diagram.validateDiagramStructure(diagram)
+    else:
+      return api.abort(400, "El diagrama se encuentra vacío.")
+
     if errors:
       logging.warn("diagrama no valido ")
       return errors, 406

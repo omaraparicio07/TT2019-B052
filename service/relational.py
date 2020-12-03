@@ -173,14 +173,20 @@ class Relational():
           )
     return relationships
 
-  def validateOnlyBinarieRelationship(self, relationKey, links, entities):
+  def validateOnlyBinarieRelationship(self, relation, links, entities):
     count = 0
+    type_relation = ""
     for node in links:
-      if node['from'] == relationKey and [entity for entity in entities if entity[1] == node['to']]:
+      if node['from'] == relation[1] and [entity for entity in entities if entity[1] == node['to']]:
         count += 1
-      if node['to'] == relationKey and [entity for entity in entities if entity[1] == node['from']]:
+      if node['to'] == relation[1] and [entity for entity in entities if entity[1] == node['from']]:
         count += 1
-    return False if count == 2 else True
+        
+    if count == 1:
+      type_relation = f"La relación {relation} es de grado 1, el grado mínimo permitido es 2"
+    if count >= 3:
+      type_relation = f"La relación {relation} es de grado 3 o superior, el grado máximo permitido es 2"
+    return type_relation
 
 
   def getEntityWithAtributes(self, diagram, entity, attrs):
@@ -479,7 +485,7 @@ class Relational():
     relations = self.getRelationships(diagram)
     entities = self.getEntities(diagram)
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
-    relation_no_binary = [ relation[0] for relation in relations if self.validateOnlyBinarieRelationship(relation[1], links_without_unary_link, entities)]
-    relation_no_binary = [ f"La relación {relation} es de grado 3 o superior" for relation in relation_no_binary]
+    relation_no_binary = [ self.validateOnlyBinarieRelationship(relation, links_without_unary_link, entities) for relation in relations]
+    relation_no_binary = [ relation for relation in relation_no_binary if relation]
 
     return relation_no_binary
