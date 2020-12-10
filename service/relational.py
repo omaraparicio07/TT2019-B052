@@ -33,7 +33,6 @@ class Relational():
   def build_table_sentence(self, table_dict):
 
     table_template = """
-  ---------------- CREATE TABLE ----------------
   DROP TABLE IF EXISTS `{table_name}`;
   CREATE TABLE IF NOT EXISTS `{table_name}` (
   {attrs_sentences},
@@ -183,16 +182,15 @@ class Relational():
         count += 1
         
     if count == 1:
-      type_relation = f"La relación {relation} es de grado 1, el grado mínimo permitido es 2"
+      type_relation = f"La relación {relation[0]} es de grado 1, el grado mínimo permitido es 2"
     if count >= 3:
-      type_relation = f"La relación {relation} es de grado 3 o superior, el grado máximo permitido es 2"
+      type_relation = f"La relación {relation[0]} es de grado 3 o superior, el grado máximo permitido es 2"
     return type_relation
 
 
   def getEntityWithAtributes(self, diagram, entity, attrs):
     diagramDict = diagram
     entityWithAttr = []
-    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:  #pattern matching from & to
@@ -211,7 +209,6 @@ class Relational():
   def getRelationsNM(self, diagram, relationship):
     attr_nm_relation = []
     diagramDict = diagram
-    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:
@@ -229,7 +226,6 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
-    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in diagramDict['linkDataArray']:
@@ -247,7 +243,6 @@ class Relational():
     """
     attr_nm_relation = []
     diagramDict = diagram
-    # u_links = self.getUniryLink(diagram['linkDataArray'])
     # remove unary links to find unconnected items
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for node in links_without_unary_link:
@@ -282,7 +277,6 @@ class Relational():
     # obtenemos el indice del diccionario de la entidad a modificar
     index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
     # agregamos el atributo a la lista de atributos de la entidad
-    # next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute', pk_ref[3], pk_ref[4], pk_ref[5], pk_ref[6]))
     next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_ref)
     # agregamos el atributo a las llaves foraneas de la entidad
     next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)

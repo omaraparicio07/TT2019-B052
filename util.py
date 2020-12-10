@@ -17,10 +17,10 @@ def send_email(email_user,password_user, name_user,subject=False ,forget_pass=Fa
   <html>
   <head></head>
   <body>
-    <p>Hi! <b>How are you?</b><br><br>
-       Welcome to the project TT-2019-B052<br><br>
-       &nbsp;&nbsp;&nbsp;&nbsp;name : %s<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;password : %s
+    <p>Hola! <b>Como te encuentras el día de hoy?</b><br><br>
+      Te damos la bienvenida al trabajo terminal 2019-B052<br><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;Usuario : %s<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;Contraseña : %s
     </p>
   </body>
   </html>
@@ -30,10 +30,10 @@ def send_email(email_user,password_user, name_user,subject=False ,forget_pass=Fa
   <html>
   <head></head>
   <body>
-    <p>Hi! <b>Welcome back </b><br><br>
-       Have you changed your password?<br><br>
-       &nbsp;&nbsp;&nbsp;&nbsp;name : %s<br>
-       &nbsp;&nbsp;&nbsp;&nbsp;password : %s
+    <p>Hola! <b>Bienvenido de vuelta </b><br><br>
+    ¿Has cambiado tu contraseña??<br><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Usuario : %s<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Nueva contraseña : %s
     </p>
   </body>
   </html>
@@ -56,7 +56,6 @@ def send_email(email_user,password_user, name_user,subject=False ,forget_pass=Fa
     logging.error("Ocurrio un error al enviar correo a la dirección : %s", email_user)
     logging.error(e)
     return 500
-
 
 def validate_email(email_address):
   # Regex para validar correo, puede probar la expresion regular en el sitio https://pythex.org/
