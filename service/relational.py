@@ -149,7 +149,7 @@ class Relational():
   def getAttrs(self, diagram):
     attrs = []
     for node in diagram['nodeDataArray']:
-      if node['type'] in ['atribute', 'atributeDerived', 'keyAttribute', 'atributeComposite']:
+      if node['type'] in ['attribute', 'derivedAttribute', 'keyAttribute', 'multivalueAttribute']:
         attrs.append(
           (
             node['text'].replace(" ", "_"),
@@ -391,8 +391,10 @@ class Relational():
     entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
     connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
+    entity_multi_rel = [ entity for entity in entities if self.getConnectionsMoreOneRelations(diagram, entity)]
+    entity_multi_rel = [ f"La entidad {e[0]} se encuentra conectada a mas de una relación." for e in entity_multi_rel]
 
-    return entities_errors + connection_between_entities
+    return entities_errors + connection_between_entities + entity_multi_rel
 
   def getUniryLink(self, link_data_array):
     unary_links_list = []
@@ -438,9 +440,25 @@ class Relational():
       if link['from'] in entities_keys_list and link['to'] in entities_keys_list :
         entity_a = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['from'] ]
         entity_b = [ item['text'] for item in diagram['nodeDataArray'] if item['key'] == link['to'] ]
-        conn_bt_entities.append(f"No esta permitida la conexión entre entidades, {entity_a[0]} <-> {entity_b[0]}.")
+        conn_bt_entities.append(f"No esta permitida la conexión directa entre entidades, {entity_a[0]} <=> {entity_b[0]}.")
 
     return conn_bt_entities
+  
+  def getConnectionsMoreOneRelations(self, diagram, entity):
+    conn_relationships = 0
+    rel_keys = []
+    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
+    relations_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['relation', 'weakRelation'] ]
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
+    for link in links_without_unary_link:
+      if link['from'] == entity[1] and link['to'] in relations_keys_list:
+        conn_relationships +=1
+        rel_keys.append(link['to'])
+      if link['to'] == entity[1] and link['from'] in relations_keys_list:
+        conn_relationships +=1
+        rel_keys.append(link['from'])
+
+    return True if conn_relationships>1 and rel_keys[0] != rel_keys[1] else False
 
   def attrsValidations(self, diagram):
     errors_attr = []
@@ -461,7 +479,6 @@ class Relational():
     for link in links:
       if link['to'] == attr[1] or link['from'] == attr[1]:
         count = count + 1
-
     return False if count <= 1 else True
 
   def getAttrsNotEntityConnected(self, attr, links, entity_keys):
