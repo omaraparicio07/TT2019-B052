@@ -498,5 +498,15 @@ class Relational():
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     relation_no_binary = [ self.validateOnlyBinarieRelationship(relation, links_without_unary_link, entities) for relation in relations]
     relation_no_binary = [ relation for relation in relation_no_binary if relation]
+    card_errors = [rel for rel in relations if self.getRelationWithoutCardinality(rel, links_without_unary_link) ]
+    card_errors = [f"La relación {r[0]} no tiene una cardinalidad valida, debe ser 1, N ó M." for r in card_errors ]
 
-    return relation_no_binary
+    return relation_no_binary + card_errors
+
+  def getRelationWithoutCardinality(self, relation, links):
+    cardinality_invalid = False
+    for link in links:
+      if link['to'] == relation[1] or link['from'] == relation[1]:
+        if not 'cardinality' in link or not link['cardinality'] in ['1','N', 'M'] :
+          cardinality_invalid = True
+    return cardinality_invalid
