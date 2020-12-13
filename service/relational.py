@@ -185,6 +185,15 @@ class Relational():
           (node['text'].replace(" ", "_"), node['key'])
           )
     return relationships
+  
+  def getWeakRelations(self, diagram):
+    relationships = []
+    for node in diagram['nodeDataArray']:
+      if node['type'] in ['weakRelation']:
+        relationships.append(
+          (node['text'].replace(" ", "_"), node['key'])
+          )
+    return relationships
 
   def validateOnlyBinarieRelationship(self, relation, links, entities):
     count = 0
@@ -528,6 +537,7 @@ class Relational():
 
   def realtionsValidations(self, diagram):
     relations = self.getRelationships(diagram)
+    weak_relations = self.getWeakRelations(diagram)
     entities = self.getEntities(diagram)
     weak_entities = self.getWeakEntities(diagram)
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
@@ -537,8 +547,9 @@ class Relational():
     card_errors = [f"La relación {r[0]} no tiene una cardinalidad valida, debe ser 1, N ó M." for r in card_errors ]
     part_errors = [rel for rel in relations if self.getRelationWithoutParticipation(rel, links_without_unary_link) ]
     part_errors = [f"La relación {r[0]} no tiene un tipo de participación, debe ser total o parcial." for r in part_errors ]
+    weak_rel_error = [ self.validateWeakRelationConnections(relation, links_without_unary_link) for relation in weak_relations]
 
-    return relation_no_binary + card_errors + part_errors
+    return relation_no_binary + card_errors + part_errors + weak_rel_error
 
   def getRelationWithoutCardinality(self, relation, links):
     cardinality_invalid = False
@@ -561,3 +572,18 @@ class Relational():
         if not 'participacion' in link:
           participation_valid = True
     return participation_valid
+
+  def validateWeakRelationConnections(self, relation, links):
+    type_relation = ""
+    string_rel = ""
+    for node in links:
+      if node['from'] == relation[1]:
+        if node['to'] in self.weak_entity_keys: string_rel += "w" # weak entity
+        if node['to'] in self.entity_keys: string_rel += "s" #strong entity
+      if node['to'] == relation[1]:
+        if node['from'] in self.weak_entity_keys: string_rel += "w" # weak entity
+        if node['from'] in self.entity_keys: string_rel += "s" #strong entity
+
+    if not string_rel in ['ws', 'sw']:
+      type_relation = f"La relación {relation[0]} solo puede existir entre una entidad débil y una entidad fuerte."
+    return type_relation
