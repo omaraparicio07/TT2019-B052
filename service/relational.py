@@ -9,6 +9,11 @@ class Relational():
   def __init__(self,diagram, greet):
     self.diagram = diagram
     self.greet = greet
+    self.entity_keys = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] == 'entity']
+    self.weak_entity_keys = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] == 'weakEntity']
+    self.relation_keys = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] == 'relation']
+    self.weak_relation_keys = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] == 'weakRelation']
+    self.attrs_keys = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['attribute', 'derivedAttribute', 'keyAttribute', 'multivalueAttribute']]
 
 
   def getSentencesSQL(self, project_name, entitiesWithAttrs, relations_NM_to_table_with_attr):
@@ -145,6 +150,15 @@ class Relational():
           (node['text'].replace(" ", "_"), node['key'])
           )
     return entities
+  
+  def getWeakEntities(self, diagram):
+    entities = []
+    for node in diagram['nodeDataArray']:
+      if node['type'] == 'weakEntity':
+        entities.append(
+          (node['text'].replace(" ", "_"), node['key'])
+          )
+    return entities
 
   def getAttrs(self, diagram):
     attrs = []
@@ -166,7 +180,7 @@ class Relational():
   def getRelationships(self, diagram):
     relationships = []
     for node in diagram['nodeDataArray']:
-      if node['type'] in ['relation']:
+      if node['type'] in ['relation', 'weakRelation']:
         relationships.append(
           (node['text'].replace(" ", "_"), node['key'])
           )
@@ -367,9 +381,9 @@ class Relational():
   def validateDiagramStructure(self, diagram):
     errors = {}
     general_errors = self.generalValidations(diagram)
+    relations_errors = self.realtionsValidations(diagram)
     entities_errors = self.entitiesValidations(diagram)
     attrs_errors = self.attrsValidations(diagram)
-    relations_errors = self.realtionsValidations(diagram)
     if general_errors : errors['general_errors'] = general_errors
     if entities_errors : errors['entities_errors'] = entities_errors
     if attrs_errors : errors['attrs_errors'] = attrs_errors
@@ -391,10 +405,11 @@ class Relational():
     entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
     connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
-    entity_multi_rel = [ entity for entity in entities if self.getConnectionsMoreOneRelations(diagram, entity)]
-    entity_multi_rel = [ f"La entidad {e[0]} se encuentra conectada a mas de una relación." for e in entity_multi_rel]
+    # entity_multi_rel = [ entity for entity in entities if self.getConnectionsMoreOneRelations(diagram, entity)]
+    # entity_multi_rel = [ f"La entidad {e[0]} se encuentra conectada a mas de una relación." for e in entity_multi_rel]
+    weakE_participation = self.getWeakEntitiesParticipations(diagram, entities)
 
-    return entities_errors + connection_between_entities + entity_multi_rel
+    return entities_errors + connection_between_entities + weakE_participation
 
   def getUniryLink(self, link_data_array):
     unary_links_list = []
@@ -447,7 +462,6 @@ class Relational():
   def getConnectionsMoreOneRelations(self, diagram, entity):
     conn_relationships = 0
     rel_keys = []
-    entities_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['entity', 'weakEntity'] ]
     relations_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['relation', 'weakRelation'] ]
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     for link in links_without_unary_link:
@@ -459,6 +473,25 @@ class Relational():
         rel_keys.append(link['from'])
 
     return True if conn_relationships>1 and rel_keys[0] != rel_keys[1] else False
+  
+  def getWeakEntitiesParticipations(self, diagram, entities):
+    rel_keys = []
+    links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
+    weakE_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in [ 'weakEntity'] ]
+    weakR_keys_list = [ item['key'] for item in diagram['nodeDataArray'] if item['type'] in ['weakRelation']]
+    for link in links_without_unary_link:
+      if link['from'] in weakE_keys_list and link['to'] in weakR_keys_list:
+        if 'participacion' in link and link['participacion'] == 'parcial':
+          rel_keys.append(f"La entidad {link['from']} no puede existir por participación parcial.")
+      if link['to'] in weakE_keys_list and link['from'] in weakR_keys_list :
+        if 'participacion' in link and link['participacion'] == 'parcial':
+          rel_keys.append(f"La entidad {link['to']} no puede existir por participación parcial.")
+      if link['from'] in weakE_keys_list and not link['to'] in weakR_keys_list:
+        rel_keys.append(f"La entidad {link['from']} solo puede conectarse a una relación de tipo débil.")
+      if link['to'] in weakE_keys_list and not link['from'] in weakR_keys_list:
+        rel_keys.append(f"La entidad {link['to']} solo puede conectarse a una relación de tipo débil.")
+
+    return rel_keys
 
   def attrsValidations(self, diagram):
     errors_attr = []
@@ -500,8 +533,10 @@ class Relational():
     relation_no_binary = [ relation for relation in relation_no_binary if relation]
     card_errors = [rel for rel in relations if self.getRelationWithoutCardinality(rel, links_without_unary_link) ]
     card_errors = [f"La relación {r[0]} no tiene una cardinalidad valida, debe ser 1, N ó M." for r in card_errors ]
+    part_errors = [rel for rel in relations if self.getRelationWithoutParticipation(rel, links_without_unary_link) ]
+    part_errors = [f"La relación {r[0]} no tiene un tipo de participación, debe ser total o parcial." for r in part_errors ]
 
-    return relation_no_binary + card_errors
+    return relation_no_binary + card_errors + part_errors
 
   def getRelationWithoutCardinality(self, relation, links):
     cardinality_invalid = False
@@ -510,3 +545,11 @@ class Relational():
         if not 'cardinality' in link or not link['cardinality'] in ['1','N', 'M'] :
           cardinality_invalid = True
     return cardinality_invalid
+  
+  def getRelationWithoutParticipation(self, relation, links):
+    participation_valid = False
+    for link in links:
+      if link['to'] == relation[1] or link['from'] == relation[1]:
+        if not 'participacion' in link:
+          participation_valid = True
+    return participation_valid
