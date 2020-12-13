@@ -401,8 +401,9 @@ class Relational():
   def entitiesValidations(self, diagram):
     entities_errors = []
     entities = self.getEntities(diagram)
+    weak_entities = self.getWeakEntities(diagram)
     attrs = self.getAttrs(diagram)
-    entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
+    entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities + weak_entities ]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
     connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
     # entity_multi_rel = [ entity for entity in entities if self.getConnectionsMoreOneRelations(diagram, entity)]
@@ -528,8 +529,9 @@ class Relational():
   def realtionsValidations(self, diagram):
     relations = self.getRelationships(diagram)
     entities = self.getEntities(diagram)
+    weak_entities = self.getWeakEntities(diagram)
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
-    relation_no_binary = [ self.validateOnlyBinarieRelationship(relation, links_without_unary_link, entities) for relation in relations]
+    relation_no_binary = [ self.validateOnlyBinarieRelationship(relation, links_without_unary_link, entities + weak_entities) for relation in relations]
     relation_no_binary = [ relation for relation in relation_no_binary if relation]
     card_errors = [rel for rel in relations if self.getRelationWithoutCardinality(rel, links_without_unary_link) ]
     card_errors = [f"La relación {r[0]} no tiene una cardinalidad valida, debe ser 1, N ó M." for r in card_errors ]
@@ -541,7 +543,10 @@ class Relational():
   def getRelationWithoutCardinality(self, relation, links):
     cardinality_invalid = False
     for link in links:
-      if link['to'] == relation[1] or link['from'] == relation[1]:
+      if link['to'] == relation[1] and not link['from'] in self.attrs_keys:
+        if not 'cardinality' in link or not link['cardinality'] in ['1','N', 'M'] :
+          cardinality_invalid = True
+      if link['from'] == relation[1] and not link['to'] in self.attrs_keys:
         if not 'cardinality' in link or not link['cardinality'] in ['1','N', 'M'] :
           cardinality_invalid = True
     return cardinality_invalid
@@ -549,7 +554,10 @@ class Relational():
   def getRelationWithoutParticipation(self, relation, links):
     participation_valid = False
     for link in links:
-      if link['to'] == relation[1] or link['from'] == relation[1]:
+      if link['to'] == relation[1] and not link['from'] in self.attrs_keys:
+        if not 'participacion' in link:
+          participation_valid = True
+      if link['from'] == relation[1] and not link['to'] in self.attrs_keys:
         if not 'participacion' in link:
           participation_valid = True
     return participation_valid
