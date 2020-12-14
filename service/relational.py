@@ -1,4 +1,5 @@
 
+from pprint import pprint
 class Relational():
   """
   Clase que implementa la obtención de sentencias SQL a partir de un diagrama ER generado por
@@ -52,10 +53,9 @@ class Relational():
     table_name = next(iter(table_dict))[0].replace(" ", "_")
     foreing_keys=""
     primary_key=""
-
     for table in table_dict:
       attr_by_table = self.build_columns_sentences(attr_list)
-      primary_key = self.buildPrimaryKey(attr_list)
+      primary_key = self.buildPrimaryKey(primarykey)
       if foreingKeys:
         primary_key += ","
         foreing_keys = self.buildForeingKeys(foreingKeys)
@@ -95,7 +95,7 @@ class Relational():
 
   def buildPrimaryKey(self, attr_list):
     primary_key_sentence = "PRIMARY KEY ({})"
-    primary_key = [f"`{attr[0]}`" for attr in attr_list if attr[2] == 'keyAttribute']
+    primary_key = [f"`{attr[0]}`" for attr in attr_list ]
     return primary_key_sentence.format(",".join(primary_key))
 
   def buildForeingKeys(self, attr_list):
@@ -142,28 +142,20 @@ class Relational():
 
     return ",\n".join(columns_script)
 
-  def getEntities(self, diagram):
+  def getEntities(self, diagram, entity_type='entity'):
     entities = []
     for node in diagram['nodeDataArray']:
-      if node['type'] == 'entity':
-        entities.append(
-          (node['text'].replace(" ", "_"), node['key'])
-          )
-    return entities
-  
-  def getWeakEntities(self, diagram):
-    entities = []
-    for node in diagram['nodeDataArray']:
-      if node['type'] == 'weakEntity':
+      if node['type'] == entity_type:
         entities.append(
           (node['text'].replace(" ", "_"), node['key'])
           )
     return entities
 
-  def getAttrs(self, diagram):
+  def getAttrs(self, diagram, multivalue=False):
+    attr_types =  ['multivalueAttribute'] if multivalue else ['attribute', 'keyAttribute']
     attrs = []
     for node in diagram['nodeDataArray']:
-      if node['type'] in ['attribute', 'derivedAttribute', 'keyAttribute', 'multivalueAttribute']:
+      if node['type'] in attr_types:
         attrs.append(
           (
             node['text'].replace(" ", "_"),
@@ -326,7 +318,7 @@ class Relational():
 
     #Agregamos el atributo a la tabla R
     next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append((attr_fk, 0, 'fk_attribute', pk_l[3], pk_l[4], pk_l[5], pk_l[6]))
-    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_l)
+    # next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_l)
     # agregamos el atributo a las llaves foraneas de la entidad de la tabla R
     next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
 
@@ -361,22 +353,46 @@ class Relational():
                 "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']
               }
             }
+  
+  def convertAttrMultivalueToEntity(self, attr_multivalue, entitiesWithAttrs):
+    """
+    Método para convetir un atributo multivalor en una entidad, paso 6 de la transformación a sentencias SQL
+    """
+    links = [ link for link in self.diagram['linkDataArray'] if not link in self.unary_links ]
+    for link in links:
+      if link['to'] == attr_multivalue[1]:
+        e = [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == link['from']]
+      if link['from'] == attr_multivalue[1]:
+        e = [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == link['to']]
+
+    pk_e = next(iter(e[0].values())).get('primary_key')
+    table_name = f"{attr_multivalue[0]}_{next(iter(e[0].keys()))[0]}"
+     
+    table = { (table_name.lower() , attr_multivalue[1]): {
+                "primary_key":[attr_multivalue, next(iter(pk_e))],
+                "foreing_keys" : [f"{pk_e[0][0]}_{next(iter(e[0].keys()))[0]}".lower()],
+                "attributes": [attr_multivalue, next(iter(pk_e))]
+                }
+            }
+    return table
 
   def convertToSQLSenteneces(self, diagram, db_name):
     
     entities = self.getEntities(diagram)
     attrs = self.getAttrs(diagram)
+    attr_multivalue = self.getAttrs(diagram, True)
     unary_links = self.getUniryLink(diagram['linkDataArray'])
     entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
     entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
+    entitiesWithAttrs += [self.convertAttrMultivalueToEntity(attr, entitiesWithAttrs) for attr in attr_multivalue]
     relations = self.getRelationships(diagram)
     relations_NM_to_table = [self.getRelationsNM(diagram, relationship ) for relationship in relations]
+    relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
+    relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
     relations_1M = [self.getRelations1M(diagram, relationship ) for relationship in relations]
     relations_1M = [ i for i in relations_1M if i]
     relations_1_1 = [self.getRelations11(diagram, relationship ) for relationship in relations]
     relations_1_1 = [i for i in relations_1_1 if i]
-    relations_NM_to_table = [ i for i in relations_NM_to_table if i] #remove empty items
-    relations_NM_to_table_with_attr = [self.getAttrsNMRelation(diagram, entitiesWithAttrs, relation_nm, attrs) for  relation_nm in relations_NM_to_table]
 
     if relations_1M :
       for r in relations_1M:
@@ -385,7 +401,7 @@ class Relational():
       for r in relations_1_1:
         self.setForeingKey11(r, entitiesWithAttrs)
 
-    return self.getSentencesSQL(db_name, entitiesWithAttrs, relations_NM_to_table_with_attr)
+    return self.getSentencesSQL(db_name, entitiesWithAttrs , relations_NM_to_table_with_attr)
 
   def validateDiagramStructure(self, diagram):
     errors = {}
@@ -410,13 +426,11 @@ class Relational():
   def entitiesValidations(self, diagram):
     entities_errors = []
     entities = self.getEntities(diagram)
-    weak_entities = self.getWeakEntities(diagram)
+    weak_entities = self.getEntities(diagram, 'weakEntity')
     attrs = self.getAttrs(diagram)
     entities_with_attrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities + weak_entities ]
     entities_errors = self.getEntitiesWithoutAttrsOrPk(entities, attrs, entities_with_attrs )
     connection_between_entities = self.getConnectionsBetweenEntitites(diagram)
-    # entity_multi_rel = [ entity for entity in entities if self.getConnectionsMoreOneRelations(diagram, entity)]
-    # entity_multi_rel = [ f"La entidad {e[0]} se encuentra conectada a mas de una relación." for e in entity_multi_rel]
     weakE_participation = self.getWeakEntitiesParticipations(diagram, entities)
 
     return entities_errors + connection_between_entities + weakE_participation
@@ -513,7 +527,7 @@ class Relational():
     attr_multi_conn = [f"El atributo {attr} se encuentra conectado a mas de una elemento." for attr in attr_multi_conn]
     # atributos compuesto o derivados conectados a otro elemento que no sea una entidad
     attrs_no_conn_entity = [attr[0] for attr in attrs if self.getAttrsNotEntityConnected(attr, links_without_unary_link, entities_keys_list) ]
-    attrs_no_conn_entity = [f"El atributo {attr} no se encuentra conectado a una entidad." for attr in attrs_no_conn_entity]
+    attrs_no_conn_entity = [f"El atributo {attr} solo puede conectarse a una entidad." for attr in attrs_no_conn_entity]
 
     return attr_multi_conn + attrs_no_conn_entity
 
@@ -539,7 +553,7 @@ class Relational():
     relations = self.getRelationships(diagram)
     weak_relations = self.getWeakRelations(diagram)
     entities = self.getEntities(diagram)
-    weak_entities = self.getWeakEntities(diagram)
+    weak_entities = self.getEntities(diagram,'weakEntity')
     links_without_unary_link = [ link for link in diagram['linkDataArray'] if not link in self.unary_links ]
     relation_no_binary = [ self.validateOnlyBinarieRelationship(relation, links_without_unary_link, entities + weak_entities) for relation in relations]
     relation_no_binary = [ relation for relation in relation_no_binary if relation]
