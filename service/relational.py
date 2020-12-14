@@ -19,9 +19,9 @@ class Relational():
 
   def getSentencesSQL(self, project_name, entitiesWithAttrs, relations_NM_to_table_with_attr):
     database_template = """
-  DROP DATABASE if exists {db_name};
-  CREATE DATABASE {db_name};
-  USE {db_name};
+  DROP DATABASE if exists `{db_name}`;
+  CREATE DATABASE `{db_name}`;
+  USE `{db_name}`;
   """
 
     script_sentences = database_template.format(db_name=project_name)
@@ -44,7 +44,7 @@ class Relational():
   {attrs_sentences},
   {primary_key}
   {foreing_keys}
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   """
     attr_by_table = ""
     primarykey = next(iter(table_dict.values())).get('primary_key')
@@ -162,9 +162,9 @@ class Relational():
             node['key'],
             node['type'],
             node['dataType'],
-            node['dataSize'] if 'dataSize' in node else 0,
-            'NOT NULL' if 'notNull' in node else '',
-            'AUTO_INCREMENT' if 'autoIncrement' in node else '',
+            node['dataSize'] if 'dataSize' in node else 1,
+            'NOT NULL' if 'notNull' in node and node['notNull'] else '',
+            'AUTO_INCREMENT' if 'autoIncrement' in node and node['dataType'] in ['int', 'bigint'] else '',
           )
         ) 
     return attrs
@@ -366,12 +366,14 @@ class Relational():
         e = [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == link['to']]
 
     pk_e = next(iter(e[0].values())).get('primary_key')
+    pk_tuple=list(pk_e[0])
+    pk_tuple[0] = f"{pk_e[0][0]}_{next(iter(e[0].keys()))[0]}".lower()
     table_name = f"{attr_multivalue[0]}_{next(iter(e[0].keys()))[0]}"
      
     table = { (table_name.lower() , attr_multivalue[1]): {
-                "primary_key":[attr_multivalue, next(iter(pk_e))],
+                "primary_key":[attr_multivalue, tuple(pk_tuple)],
                 "foreing_keys" : [f"{pk_e[0][0]}_{next(iter(e[0].keys()))[0]}".lower()],
-                "attributes": [attr_multivalue, next(iter(pk_e))]
+                "attributes": [attr_multivalue, tuple(pk_tuple)]
                 }
             }
     return table
