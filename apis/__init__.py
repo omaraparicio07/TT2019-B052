@@ -4,6 +4,7 @@ from .user import api as ns_user
 from .login import api as ns_login
 from .diagram import api as ns_diagram
 from .relational_model import api as ns_relational
+from .no_relational_model import api as ns_no_relational
 
 #Authorization
 authorizations = {
@@ -30,3 +31,4 @@ api.add_namespace(ns_user)
 api.add_namespace(ns_login)
 api.add_namespace(ns_diagram)
 api.add_namespace(ns_relational)
+api.add_namespace(ns_no_relational)
