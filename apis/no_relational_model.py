@@ -2,8 +2,11 @@ from flask import current_app, json
 from flask_restplus import Namespace, Resource, fields
 from service.relational import Relational
 from service.noSQL.parser_gdm_to_model import ParserGDM as gdmParser
+from service.noSQL.gdm_to_ddm import ParserDDM as ddmParser
+from service.noSQL.document_model_to_gojs import ParserDiagramNoSQL as gojsParser
 import logging as Log
 import json
+import os
 
 Log.basicConfig(level=Log.DEBUG)
 
@@ -29,20 +32,42 @@ class NoRelationa(Resource):
     """
     Método para realizar la tranformación  del gdm de texto simple al ddm
     """
-    Log.info("Iniciando trasformación al GDM de texto simple")
+    Log.info("Iniciando trasformación del GDM de texto simple")
     entities_gdm_input = api.payload['entidades']
     queries_gdm_input = api.payload['consultas']
 
     if entities_gdm_input and queries_gdm_input:
-      Log.info("Procedemos al Crear el archivo .gdm")
-      with open("venues.gdm","w+") as gdmFile:
-        gdmFile.write("*"*23+ "\n"+"* Entities definition *"+ "\n"+"*"*23 + "\n\n")
-        gdmFile.write(entities_gdm_input)
-        gdmFile.write("\n\n")
-        gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
-        gdmFile.write(queries_gdm_input)
-      gdm_parse = gdmParser()
-      gdm_parse.main("venues.gdm")
-      return "Todo cool!!."
+      Log.info("Procedemos al crear el archivo .gdm")
+      # with open("venues.gdm","w+") as gdmFile:
+      #   gdmFile.write("*"*23+ "\n"+"* Entities definition *"+ "\n"+"*"*23 + "\n\n")
+      #   gdmFile.write(entities_gdm_input)
+      #   gdmFile.write("\n\n")
+      #   gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
+      #   gdmFile.write(queries_gdm_input)
+      #   Log.info("archivo creado con exitp")
+      try:
+        # gdm_parse = gdmParser()
+        # gdm_parse.main("venues.gdm")
+        ddm_parser = ddmParser()
+        ddm_parser.main("venues")
+        gojs_parser = gojsParser()
+        gojsDiagram = gojs_parser.main("prueba_ddm.xmi")
+        if gojsDiagram:
+          response = {
+            'diagram':gojsDiagram
+          }
+          return response
+        else:
+          return api.abort(500, "Ocurrio un error con los datos del diagrama al modelo NoSQL.")
+      except Exception as ex :
+        Log.exception("Algo ocurrio!")
+        return api.abort(500, "Ocurrio un error en la tranformación al modelo NoSQL.")
+      finally:
+        # eliminar archivos del servidor
+        # if os.path.exists("venues.gdm"):
+        #   os.remove("venues.gdm")
+        # if os.path.exists("venues.xmi"):
+        #   os.remove("venues.xmi")
+        pass
     else:
       return api.abort(400, "Las entidades o consultas se encuentran vacios.")
