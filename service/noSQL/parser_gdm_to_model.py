@@ -313,7 +313,7 @@ class ParserGDM(object):
         return
 
     def main(self, gdmFileName=''):
-        Log.info("llego al main")
+        Log.info("Iniciando la tranformación al modelo gdm")
 
         # Creamos el modelo GDM
         model = gdm.Model()
