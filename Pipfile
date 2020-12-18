@@ -14,6 +14,7 @@ dnspython = "*"
 gunicorn = "*"
 flask-restplus = "*"
 werkzeug = "==0.16.1"
+pyecore = "*"
 
 [requires]
 python_version = "3.7"

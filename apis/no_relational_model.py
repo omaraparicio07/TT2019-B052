@@ -1,6 +1,7 @@
 from flask import current_app, json
 from flask_restplus import Namespace, Resource, fields
 from service.relational import Relational
+from service.noSQL.parser_gdm_to_model import ParserGDM as gdmParser
 import logging as Log
 import json
 
@@ -34,6 +35,14 @@ class NoRelationa(Resource):
 
     if entities_gdm_input and queries_gdm_input:
       Log.info("Procedemos al Crear el archivo .gdm")
+      with open("venues.gdm","w+") as gdmFile:
+        gdmFile.write("*"*23+ "\n"+"* Entities definition *"+ "\n"+"*"*23 + "\n\n")
+        gdmFile.write(entities_gdm_input)
+        gdmFile.write("\n\n")
+        gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
+        gdmFile.write(queries_gdm_input)
+      gdm_parse = gdmParser()
+      gdm_parse.main("venues.gdm")
       return "Todo cool!!."
     else:
       return api.abort(400, "Las entidades o consultas se encuentran vacios.")
