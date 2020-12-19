@@ -4,6 +4,7 @@ from service.relational import Relational
 from service.noSQL.parser_gdm_to_model import ParserGDM as gdmParser
 from service.noSQL.gdm_to_ddm import ParserDDM as ddmParser
 from service.noSQL.document_model_to_gojs import ParserDiagramNoSQL as gojsParser
+from service.noSQL.er_to_gdm_entities import GDMEntities as gdmEntities
 import logging as Log
 import json
 import os
@@ -15,6 +16,10 @@ api = Namespace('noRelational', description='Modelo no relacional (NoSQL)')
 gdmSimpleText = api.model('gdm', {
   'entities': fields.String(required= True, example="entity { gdmType entityAttributeName propAttribute}"),
   'queries': fields.String(required= True, example="query queryName: select alias.propsEntity from entity as alias including alias.prop  where alias.prop = '?'")
+})
+
+diagram = api.model('diagram', {
+  'diagram': fields.String(example="{}", required= True),
 })
 
 @api.route("")
@@ -72,3 +77,32 @@ class NoRelationa(Resource):
         pass
     else:
       return api.abort(400, "Las entidades o consultas se encuentran vacios.")
+  
+
+  @api.expect(diagram)
+  @api.response(200, "Entidades obtenidas con exito.")
+  @api.response(400, "Diagrama no encontrado en la petición.")
+  @api.response(500, "Error en el servidor.")
+  def put(Resource):
+    """
+    Obtener las entidades del diagrama ER y parsearlas a las entidades de gdm
+    """
+    Log.info("Obteniendo las entidades del GDM de texto simple")
+    if api.payload['diagram']:
+      diagram = json.loads(api.payload['diagram'])
+      gdm_entities = gdmEntities()
+      gdm_entities.main(diagram)
+      entities = ""
+      try:
+        with open("salida.gdm", "r") as f:
+          entities = f.read()
+        return entities
+      except Exception :
+        Log.exception("Algo ocurrio!")
+        return api.abort(500, "Ocurrio un error al obtener las entidades del diagrama ER.")
+      finally:
+        if os.path.exists("salida.gdm"):
+          os.remove("salida.gdm")
+    else:
+      return api.abort(400, "Diagrama no encontrado en la petición.")
+
