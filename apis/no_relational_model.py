@@ -38,16 +38,17 @@ class NoRelationa(Resource):
 
     if entities_gdm_input and queries_gdm_input:
       Log.info("Procedemos al crear el archivo .gdm")
-      # with open("venues.gdm","w+") as gdmFile:
-      #   gdmFile.write("*"*23+ "\n"+"* Entities definition *"+ "\n"+"*"*23 + "\n\n")
-      #   gdmFile.write(entities_gdm_input)
-      #   gdmFile.write("\n\n")
-      #   gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
-      #   gdmFile.write(queries_gdm_input)
-      #   Log.info("archivo creado con exitp")
+      with open("venues.gdm","w+") as gdmFile:
+        gdmFile.write("*"*23+ "\n"+"* Entities definition *"+ "\n"+"*"*23 + "\n\n")
+        gdmFile.write(entities_gdm_input)
+        gdmFile.write("\n\n")
+        gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
+        gdmFile.write(queries_gdm_input)
+        gdmFile.write("\n  ")
+        Log.info("archivo creado con exitp")
       try:
-        # gdm_parse = gdmParser()
-        # gdm_parse.main("venues.gdm")
+        gdm_parse = gdmParser()
+        gdm_parse.main("venues.gdm")
         ddm_parser = ddmParser()
         ddm_parser.main("venues")
         gojs_parser = gojsParser()
@@ -64,10 +65,10 @@ class NoRelationa(Resource):
         return api.abort(500, "Ocurrio un error en la tranformación al modelo NoSQL.")
       finally:
         # eliminar archivos del servidor
-        # if os.path.exists("venues.gdm"):
-        #   os.remove("venues.gdm")
-        # if os.path.exists("venues.xmi"):
-        #   os.remove("venues.xmi")
+        if os.path.exists("venues.gdm"):
+          os.remove("venues.gdm")
+        if os.path.exists("venues.xmi"):
+          os.remove("venues.xmi")
         pass
     else:
       return api.abort(400, "Las entidades o consultas se encuentran vacios.")
