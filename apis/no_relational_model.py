@@ -13,8 +13,8 @@ Log.basicConfig(level=Log.DEBUG)
 api = Namespace('noRelational', description='Modelo no relacional (NoSQL)')
 
 gdmSimpleText = api.model('gdm', {
-  'entidades': fields.String(required= True, example="entity { gdmType entityAttributeName propAttribute}"),
-  'consultas': fields.String(required= True, example="query queryName: select alias.propsEntity from entity as alias including alias.prop  where alias.prop = '?'")
+  'entities': fields.String(required= True, example="entity { gdmType entityAttributeName propAttribute}"),
+  'queries': fields.String(required= True, example="query queryName: select alias.propsEntity from entity as alias including alias.prop  where alias.prop = '?'")
 })
 
 @api.route("")
@@ -33,8 +33,8 @@ class NoRelationa(Resource):
     Método para realizar la tranformación  del gdm de texto simple al ddm
     """
     Log.info("Iniciando trasformación del GDM de texto simple")
-    entities_gdm_input = api.payload['entidades']
-    queries_gdm_input = api.payload['consultas']
+    entities_gdm_input = api.payload['entities']
+    queries_gdm_input = api.payload['queries']
 
     if entities_gdm_input and queries_gdm_input:
       Log.info("Procedemos al crear el archivo .gdm")

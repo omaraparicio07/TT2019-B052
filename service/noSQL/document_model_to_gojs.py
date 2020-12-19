@@ -198,11 +198,4 @@ class ParserDiagramNoSQL(object):
       json_linksDataArray = json.dumps(linksDataArray) 
       data["nodeDataArray"] = nodeDataArray 
       data["linkDataArray"] = linksDataArray
-      ofile = "venuesLalo.json"
       return data
-      # with open(ofile, "w") as json_file:
-      #     json_file.write(json.dumps(data)) 
-      #     #json_file.write(json_nodeDataArray) 
-      #     #json_file.write(json_linksDataArray)
-          
-      #     json_file.close() 
