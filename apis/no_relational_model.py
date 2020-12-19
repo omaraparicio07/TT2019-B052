@@ -5,6 +5,7 @@ from service.noSQL.parser_gdm_to_model import ParserGDM as gdmParser
 from service.noSQL.gdm_to_ddm import ParserDDM as ddmParser
 from service.noSQL.document_model_to_gojs import ParserDiagramNoSQL as gojsParser
 from service.noSQL.er_to_gdm_entities import GDMEntities as gdmEntities
+from service.noSQL.ddm_to_mongo import ParserScriptMongo as mongoParser
 import logging as Log
 import json
 import os
@@ -40,7 +41,6 @@ class NoRelationa(Resource):
     Log.info("Iniciando trasformación del GDM de texto simple")
     entities_gdm_input = api.payload['entities']
     queries_gdm_input = api.payload['queries']
-
     if entities_gdm_input and queries_gdm_input:
       Log.info("Procedemos al crear el archivo .gdm")
       with open("venues.gdm","w+") as gdmFile:
@@ -50,7 +50,7 @@ class NoRelationa(Resource):
         gdmFile.write("*"*22+ "\n"+"* Queries definition *"+ "\n"+"*"*22 +"\n\n")
         gdmFile.write(queries_gdm_input)
         gdmFile.write("\n  ")
-        Log.info("archivo creado con exitp")
+        Log.info("archivo creado con éxito")
       try:
         gdm_parse = gdmParser()
         gdm_parse.main("venues.gdm")
@@ -74,7 +74,6 @@ class NoRelationa(Resource):
           os.remove("venues.gdm")
         if os.path.exists("venues.xmi"):
           os.remove("venues.xmi")
-        pass
     else:
       return api.abort(400, "Las entidades o consultas se encuentran vacios.")
   
@@ -105,4 +104,26 @@ class NoRelationa(Resource):
           os.remove("salida.gdm")
     else:
       return api.abort(400, "Diagrama no encontrado en la petición.")
+  
+  @api.response(200, "OK.")
+  @api.response(400, "Modelo NoSQL no encontrado.")
+  @api.response(500, "Error en el servidor.")
+  def get(Resource):
+    if os.path.exists("prueba_ddm.xmi"):
+      mongo_parser = mongoParser()
+      mongo_parser.main()
+      try:
+        with open("laloMongo.json", "r") as f:
+          scriptMongo = f.read()
+        return scriptMongo
+      except Exception :
+        Log.exception("Algo ocurrio!")
+        return api.abort(500, "Ocurrio un error al obtener el script de mongoDB.")
+      finally:
+        if os.path.exists("laloMongo.json"):
+          os.remove("laloMongo.json")
+        if os.path.exists("prueba_ddm.xmi"):
+          os.remove("prueba_ddm.xmi")
+    else:
+      return api.abort(400, "Modelo NoSQL no encontrado.")
 
