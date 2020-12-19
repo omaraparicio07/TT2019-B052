@@ -70,13 +70,12 @@ class ParserDDM(object):
         newField = ddm.PrimitiveField()
         newField.name = self.toFirstLower(reference.entity.name) + "Ref"
         newField.type = ddm.PrimitiveType.from_string("ID")
-        prueba = "hola"
       else:
         newField = ddm.Document()
         newField.name = self.toFirstLower(reference.entity.name)
         self.populateDocument(newField, reference.entity, child, mainEntities)
 
-      if (reference.cardinality == "1"):
+      if (reference.cardinality != "1"):
         # encapsulate field in an array
         arrayField = ddm.ArrayField()
         arrayField.name = newField.name + "Array"
