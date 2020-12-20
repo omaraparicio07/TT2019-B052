@@ -81,12 +81,17 @@ class GDMEntities(object):
 
     line = "ref " + reference["entity"] + cardinality + " " + reference["name"]
     return "  " + line + "\n"
+  
+  def toFirstLower(self, test_str):
+    return test_str[0].lower() + test_str[1:]
 
   def main(self, diagram):
     Log.info("Ejecutando clase principal del parser er_to_gdm")
     nodeData = diagram['nodeDataArray']
     linkData = diagram['linkDataArray']
 
+    # if not (nodeData or linkData):
+    #   return
     
     entities = list(filter(lambda item: item['type'] == "entity",nodeData))
 
@@ -101,15 +106,23 @@ class GDMEntities(object):
       for feature in features:
         if (feature['type'] == "relation"):
           reference = {}
-          reference["name"] = feature["text"]
           relation = self.getRelationInfo( feature["key"], linkData, nodeData)
 
           if (relation["from"]["key"] != entity["key"]):
             reference["entity"] = relation["from"]["text"]
             reference["cardinality"] = relation["fromC"]
+            if relation["fromC"] != '1':
+              reference["name"] = feature["text"] + relation["from"]["text"]
+            else:
+              reference["name"] = self.toFirstLower(relation["from"]["text"])
           else:
             reference["entity"] = relation["to"]["text"]
             reference["cardinality"] = relation["toC"]
+            # Si la relación es a N, va el nombre de la relación concatenado con el nombre de la entidad
+            if relation["toC"] != '1':
+                reference["name"] = feature["text"] + relation["to"]["text"]
+            else:
+                reference["name"] = self.toFirstLower(relation["to"]["text"])
 
           references.append(reference)
         if ( self.isAttribute(feature['type']) ):
@@ -126,7 +139,7 @@ class GDMEntities(object):
       if count == 0:
         count += 1
         with open("salida.gdm", 'w') as output_file:
-          output_file.write("entiy " + entity["text"] + " {\n")
+          output_file.write("entity " + entity["text"] + " {\n")
           for attribute in reversed(attributes):
             output_file.write(self.parseAttribute(attribute))
           for reference in reversed(references):
@@ -135,7 +148,7 @@ class GDMEntities(object):
           output_file.close()
       else:
         with open("salida.gdm", 'a') as output_file:
-          output_file.write("entiy " + entity["text"] + " {\n")
+          output_file.write("entity " + entity["text"] + " {\n")
           for attribute in reversed(attributes):
             output_file.write(self.parseAttribute(attribute))
           for reference in reversed(references):

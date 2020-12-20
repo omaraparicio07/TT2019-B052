@@ -41,6 +41,7 @@ class NoRelationa(Resource):
     Log.info("Iniciando trasformación del GDM de texto simple")
     entities_gdm_input = api.payload['entities']
     queries_gdm_input = api.payload['queries']
+    print(entities_gdm_input)
     if entities_gdm_input and queries_gdm_input:
       Log.info("Procedemos al crear el archivo .gdm")
       with open("venues.gdm","w+") as gdmFile:
@@ -81,6 +82,7 @@ class NoRelationa(Resource):
   @api.expect(diagram)
   @api.response(200, "Entidades obtenidas con exito.")
   @api.response(400, "Diagrama no encontrado en la petición.")
+  @api.response(402, "El diagrama no cuenta con elementos validos.")
   @api.response(500, "Error en el servidor.")
   def put(Resource):
     """
@@ -102,6 +104,7 @@ class NoRelationa(Resource):
       finally:
         if os.path.exists("salida.gdm"):
           os.remove("salida.gdm")
+        pass
     else:
       return api.abort(400, "Diagrama no encontrado en la petición.")
   
