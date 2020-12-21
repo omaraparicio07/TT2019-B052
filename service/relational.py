@@ -1,5 +1,6 @@
 
 from pprint import pprint
+from collections import Counter
 class Relational():
   """
   Clase que implementa la obtención de sentencias SQL a partir de un diagrama ER generado por
@@ -421,8 +422,10 @@ class Relational():
     general_errors = []
     unary_links = self.getUniryLink(diagram['linkDataArray'])
     unconnected_items = self.getUnconnectedItems(diagram)
+    duplicated_names = self.getDuplicatedNames(diagram['nodeDataArray'])
     if unary_links: general_errors += unary_links
     if unconnected_items: general_errors += unconnected_items
+    if duplicated_names: general_errors += duplicated_names
     return general_errors
 
   def entitiesValidations(self, diagram):
@@ -445,6 +448,12 @@ class Relational():
         self.unary_links.append(link)
         
     return unary_links_list
+
+  def getDuplicatedNames(self, nodos):
+    names_list = [node['text'] for node in nodos ]
+    duplicated_names = [ (name, count) for name, count in Counter(names_list).items() if count > 1 ]
+    duplicated_names = [f"Se encontraron {dn[1]} elementos con el nombre {dn[0]}, no debe haber elementos con el mismo nombre." for dn in duplicated_names]
+    return duplicated_names
   
   def getUnconnectedItems(self, diagram):
     unconnected_list = []
