@@ -48,10 +48,10 @@ class Relational():
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   """
     attr_by_table = ""
-    primarykey = next(iter(table_dict.values())).get('primary_key')
-    attr_list = next(iter(table_dict.values())).get('attributes')
-    foreingKeys = next(iter(table_dict.values())).get('foreing_keys')
-    table_name = next(iter(table_dict))[0].replace(" ", "_")
+    primarykey = table_dict.get('primary_key')
+    attr_list = table_dict.get('attributes')
+    foreingKeys = table_dict.get('foreing_keys')
+    table_name = table_dict['entity'][0].replace(" ", "_")
     foreing_keys=""
     primary_key=""
     for table in table_dict:
@@ -220,7 +220,7 @@ class Relational():
             entityWithAttr.append(attr)
     primary_key = self.validateKeyAttibute({ entity : entityWithAttr })
 
-    return { entity : {'attributes':entityWithAttr, 'primary_key': primary_key, 'foreing_keys':[] } }
+    return { 'entity' : entity, 'attributes':entityWithAttr, 'primary_key': primary_key, 'foreing_keys':[] }
 
   def getRelationsNM(self, diagram, relationship):
     attr_nm_relation = []
@@ -277,25 +277,25 @@ class Relational():
     table_fk = ""
     pk_ref = ()
     for key in next(iter(relations_1N_cardinality.values())):
-      attributes_entity =  [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
+      attributes_entity =  [entity for entity in entitiesWithAttrs if entity['entity'][1] == key[0]].pop()
       if key[1] == '1':
-        pk_ref = next(iter(attributes_entity[0].values()))['primary_key'][0]
-        ref_table = next(iter(attributes_entity[0]))
+        pk_ref = attributes_entity['primary_key'][0]
+        ref_table = attributes_entity['entity']
         table_ref = ref_table[0]
         attr_fk = f"{pk_ref[0]}_{ref_table[0].lower()}"
         attr_tuple = list(pk_ref)
         attr_tuple[0] = attr_fk
         pk_ref = tuple(attr_tuple)
       if key[1] == 'N':
-        table_fk = [ entity for entity in entitiesWithAttrs if next(iter(entity))[1] == key[0]]
-        ref_table = next(iter(table_fk[0]))
+        table_fk = [ entity for entity in entitiesWithAttrs if entity['entity'][1] == key[0]].pop()
+        ref_table = table_fk['entity']
         table_fk = attributes_entity
     # obtenemos el indice del diccionario de la entidad a modificar
-    index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk[0])
+    index_entity = next(i for i,item in enumerate(entitiesWithAttrs) if item == table_fk)
     # agregamos el atributo a la lista de atributos de la entidad
-    next(iter(entitiesWithAttrs[index_entity].values()))['attributes'].append(pk_ref)
+    entitiesWithAttrs[index_entity]['attributes'].append(pk_ref)
     # agregamos el atributo a las llaves foraneas de la entidad
-    next(iter(entitiesWithAttrs[index_entity].values()))['foreing_keys'].append(attr_fk)
+    entitiesWithAttrs[index_entity]['foreing_keys'].append(attr_fk)
     
     return None
 
@@ -347,12 +347,10 @@ class Relational():
         primary_keys.append(primary_key)
         foreing_keys.append(attr_fk)
     attr_nm_relation = [self.getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
-    return {next(iter(relation_nm)) : 
-              {
-                "primary_keys":primary_keys,
-                "foreing_keys" : foreing_keys,
-                "attr_relationship": next(iter(attr_nm_relation[0].values()))['attributes']
-              }
+    return {'entity' : next(iter(relation_nm)),
+            "primary_keys":primary_keys,
+            "foreing_keys" : foreing_keys,
+            "attr_relationship": attr_nm_relation[0]['attributes']
             }
   
   def convertAttrMultivalueToEntity(self, attr_multivalue, entitiesWithAttrs):
@@ -362,20 +360,20 @@ class Relational():
     links = [ link for link in self.diagram['linkDataArray'] if not link in self.unary_links ]
     for link in links:
       if link['to'] == attr_multivalue[1]:
-        e = [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == link['from']]
+        e = [entity for entity in entitiesWithAttrs if entity['entity'][1] == link['from']]
       if link['from'] == attr_multivalue[1]:
-        e = [entity for entity in entitiesWithAttrs if next(iter(entity))[1] == link['to']]
+        e = [entity for entity in entitiesWithAttrs if entity['entity'][1] == link['to']]
 
-    pk_e = next(iter(e[0].values())).get('primary_key')
+    pk_e = e[0].get('primary_key')
+    entity = e[0].get('entity')
     pk_tuple=list(pk_e[0])
-    pk_tuple[0] = f"{pk_e[0][0]}_{next(iter(e[0].keys()))[0]}".lower()
-    table_name = f"{attr_multivalue[0]}_{next(iter(e[0].keys()))[0]}"
-     
-    table = { (table_name.lower() , attr_multivalue[1]): {
-                "primary_key":[attr_multivalue, tuple(pk_tuple)],
-                "foreing_keys" : [f"{pk_e[0][0]}_{next(iter(e[0].keys()))[0]}".lower()],
-                "attributes": [attr_multivalue, tuple(pk_tuple)]
-                }
+    pk_tuple[0] = f"{pk_e[0][0]}_{entity[0]}".lower()
+    table_name = f"{attr_multivalue[0]}_{entity[0]}"
+    table = { 'entity':(table_name.lower() , attr_multivalue[1]),
+              "primary_key":[attr_multivalue, tuple(pk_tuple)],
+              "foreing_keys" : [f"{pk_e[0][0]}_{entity[0]}".lower()],
+              "attributes": [attr_multivalue, tuple(pk_tuple)]
+            }
             }
     return table
 
