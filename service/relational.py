@@ -450,7 +450,7 @@ class Relational():
     return unary_links_list
 
   def getDuplicatedNames(self, nodos):
-    names_list = [node['text'] for node in nodos if node['type'] in ['entity', 'weakEntity', 'relation', 'weakRelation'] ]
+    names_list = [node['text'] for node in nodos if node['type'] in ['entity', 'weakEntity'] ]
     duplicated_names = [ (name, count) for name, count in Counter(names_list).items() if count > 1 ]
     duplicated_names = [f"Se encontraron {dn[1]} elementos con el nombre {dn[0]}, no debe haber elementos con el mismo nombre." for dn in duplicated_names]
     return duplicated_names
