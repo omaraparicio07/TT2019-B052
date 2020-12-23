@@ -75,10 +75,10 @@ class Relational():
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
   """
     attr_by_table = ""
-    attr_primarykey_list = next(iter(table_dict.values())).get('primary_keys')
-    attr_relation_list = next(iter(table_dict.values())).get('attr_relationship')
-    foreingKeys_list = next(iter(table_dict.values())).get('foreing_keys')
-    table_name = next(iter(table_dict))[0].replace(" ", "_")
+    attr_primarykey_list = table_dict.get('primary_keys')
+    attr_relation_list = table_dict.get('attr_relationship')
+    foreingKeys_list = table_dict.get('foreing_keys')
+    table_name = table_dict['entity'][0].replace(" ", "_")
     foreing_keys=""
     primary_key=""
 
@@ -112,7 +112,7 @@ class Relational():
     fk_list = []
     for attr in attr_list:
       attr_ref_table, ref_table = attr[0].rsplit("_",1)
-      fk_list.append(f"FOREIGN KEY ({attr_ref_table}) REFERENCES {ref_table} ({attr_ref_table})")
+      fk_list.append(f"FOREIGN KEY ({attr[0]}) REFERENCES {ref_table} ({attr_ref_table})")
     return ",\n".join(fk_list)
 
   def build_columns_sentences(self, attr_list):
@@ -336,18 +336,20 @@ class Relational():
     attr_nm_relation = []
     primary_keys = []
     foreing_keys = []
+    table_name = next(iter(relation_nm))[0]
     for entity_attrs in entitiesWithAttrs:
-      if next(iter(entity_attrs))[1] in next(iter(relation_nm.values())):
-        primary_key = next(iter(entity_attrs.values()))['primary_key'][0]
-        ref_table = next(iter(entity_attrs))
+      if entity_attrs['entity'][1] in next(iter(relation_nm.values())):
+        primary_key = entity_attrs['primary_key'][0]
+        ref_table = entity_attrs['entity']
         attr_fk = f"{primary_key[0]}_{ref_table[0].lower()}"
         attr_tuple = list(primary_key)
         attr_tuple[0] = attr_fk
+        table_name += "_"+ref_table[0].lower()
         primary_key = tuple(attr_tuple)
         primary_keys.append(primary_key)
         foreing_keys.append(attr_fk)
     attr_nm_relation = [self.getEntityWithAtributes(diagram, next(iter(relation_nm)), attrs)]
-    return {'entity' : next(iter(relation_nm)),
+    return {'entity' : (table_name, next(iter(relation_nm))[1] ),
             "primary_keys":primary_keys,
             "foreing_keys" : foreing_keys,
             "attr_relationship": attr_nm_relation[0]['attributes']
@@ -374,7 +376,6 @@ class Relational():
               "foreing_keys" : [f"{pk_e[0][0]}_{entity[0]}".lower()],
               "attributes": [attr_multivalue, tuple(pk_tuple)]
             }
-            }
     return table
 
   def convertToSQLSenteneces(self, diagram, db_name):
@@ -384,7 +385,6 @@ class Relational():
     attr_multivalue = self.getAttrs(diagram, True)
     unary_links = self.getUniryLink(diagram['linkDataArray'])
     entitiesWithAttrs = [self.getEntityWithAtributes(diagram, entity, attrs) for entity in entities]
-    entitiesWithAttrs_validation = [self.validateKeyAttibute(atributes) for atributes in entitiesWithAttrs]
     entitiesWithAttrs += [self.convertAttrMultivalueToEntity(attr, entitiesWithAttrs) for attr in attr_multivalue]
     relations = self.getRelationships(diagram)
     relations_NM_to_table = [self.getRelationsNM(diagram, relationship ) for relationship in relations]
@@ -402,7 +402,8 @@ class Relational():
       for r in relations_1_1:
         self.setForeingKey11(r, entitiesWithAttrs)
 
-    return self.getSentencesSQL(db_name, entitiesWithAttrs , relations_NM_to_table_with_attr)
+    lOrde =  sorted(entitiesWithAttrs, key=lambda k: len(k['foreing_keys'])) 
+    return self.getSentencesSQL(db_name, lOrde , relations_NM_to_table_with_attr)
 
   def validateDiagramStructure(self, diagram):
     errors = {}
