@@ -473,11 +473,9 @@ class Relational():
     for entity_with_attr in entities_with_attrs:
       # entity_with_attr = next(iter(entity_with_attr.values()))
       if not entity_with_attr['attributes']:
-        entity_without_attrs = next(iter(entity_with_attr.keys()))
-        entities_without_attr.append(f"La entidad {entity_without_attrs[0]} no cuenta con atributos.")
+        entities_without_attr.append(f"La entidad {entity_with_attr['entity'][0]} no cuenta con atributos.")
       if not entity_with_attr['primary_key']:
-        entity_without_pk = next(iter(entity_with_attr.keys()))
-        entities_without_pk.append(f"La entidad {entity_without_pk[0]} no cuenta con un atributo clave.")
+        entities_without_pk.append(f"La entidad {entity_with_attr['entity'][0]} no cuenta con un atributo clave.")
 
     return entities_without_attr + entities_without_pk
 
